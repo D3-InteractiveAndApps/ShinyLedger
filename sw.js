@@ -1,6 +1,6 @@
 // Shiny Ledger service worker: the app opens and counts with no signal.
 // Bump VERSION whenever you deploy so phones pick up the new files.
-const VERSION = 'shiny-ledger-v3';
+const VERSION = 'shiny-ledger-v4';
 const SHELL = ['./','index.html','config.js','manifest.webmanifest','vendor/supabase.js','vendor/591.supabase.js',
   'icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','icons/apple-touch-icon.png','icons/favicon-64.png'];
 
