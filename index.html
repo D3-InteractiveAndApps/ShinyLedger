@@ -1,0 +1,1467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Track shiny hunts for every Pokémon game, with live odds, RNG tools and themes.">
+<meta name="theme-color" content="#16181d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shiny Ledger">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Shiny Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Press+Start+2P&family=Pixelify+Sans:wght@500;700&family=Cinzel:wght@600;700&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: chrome bar with tabs on top; Hunts tab = hunt list rail + one big counter workspace; other tabs are single-column tool pages. Skins swap every token below. */
+:root{
+  --chrome:#16181d; --chrome-ink:#ffffff;
+  --bg:#f3f4f6; --panel:#ffffff; --panel2:#eceef2;
+  --ink:#16181d; --muted:#5b6270; --line:#dde0e6;
+  --accent:#cf3328; --on-accent:#ffffff; --spark:#b8860b;
+  --good:#1f8a4c; --warn:#a86400; --bad:#c0392b;
+  --font-display:"Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+  --font-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --dscale:1;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --chrome:#0a0b0e; --chrome-ink:#f2f3f5;
+    --bg:#0f1115; --panel:#171a20; --panel2:#1f232b;
+    --ink:#eceef2; --muted:#9aa1ad; --line:#2a2f38;
+    --accent:#ff5a4e; --on-accent:#140605; --spark:#ffcc4d;
+    --good:#4fd08a; --warn:#ffb347; --bad:#ff6b5e;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --chrome:#0a0b0e; --chrome-ink:#f2f3f5;
+  --bg:#0f1115; --panel:#171a20; --panel2:#1f232b;
+  --ink:#eceef2; --muted:#9aa1ad; --line:#2a2f38;
+  --accent:#ff5a4e; --on-accent:#140605; --spark:#ffcc4d;
+  --good:#4fd08a; --warn:#ffb347; --bad:#ff6b5e;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;margin:0;min-height:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;text-wrap:balance;line-height:1.15}
+h2{font-size:calc(1.35rem * var(--dscale))}
+h3{font-size:calc(1.05rem * var(--dscale))}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+
+/* chrome */
+.chrome{background:var(--chrome);color:var(--chrome-ink);position:sticky;top:0;padding-top:env(safe-area-inset-top,0px);z-index:20;border-bottom:1px solid var(--line)}
+.chrome-in{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.syncpill{display:inline-flex;align-items:center;gap:7px;border:1px solid color-mix(in srgb,var(--chrome-ink) 30%,transparent);background:transparent;color:var(--chrome-ink);border-radius:99px;padding:5px 11px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;order:3}
+.syncpill i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.55;flex:none}
+.syncpill[data-s="synced"] i{background:#3ecf8e;opacity:1}
+.syncpill[data-s="saving"] i{background:#f5b942;opacity:1}
+.syncpill[data-s="offline"] i{background:#9aa3ad;opacity:1}
+.syncpill[data-s="error"] i{background:#ff6b5e;opacity:1}
+.skin-pick{order:4}
+.brand svg{width:26px;height:26px;flex:none}
+.brand b{font-family:var(--font-display);font-size:calc(1.2rem * var(--dscale));letter-spacing:.02em}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{background:none;border:0;color:var(--chrome-ink);opacity:.72;padding:7px 11px;border-radius:7px;cursor:pointer;font-weight:600;font-size:.88rem}
+.tabs button:hover{opacity:1}
+.tabs button[aria-selected="true"]{opacity:1;background:color-mix(in srgb,var(--chrome-ink) 16%,transparent)}
+.skin-pick{display:flex;align-items:center;gap:6px;font-size:.8rem}
+.skin-pick select{background:color-mix(in srgb,var(--chrome-ink) 12%,transparent);border:1px solid color-mix(in srgb,var(--chrome-ink) 30%,transparent);color:var(--chrome-ink);border-radius:7px;padding:5px 8px;max-width:170px}
+.skin-pick select option{color:#111;background:#fff}
+
+main{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:20px 60px}
+.page{display:grid;gap:18px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.pad{padding:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 13px;cursor:pointer;font-weight:600;font-size:.88rem;line-height:1.2}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+.btn.armed{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+label.f{display:grid;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600;min-width:0}
+label.f input,label.f select,label.f textarea,.inp{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink);font-weight:400;font-size:.92rem;width:100%;min-width:0}
+textarea{resize:vertical}
+.check{display:flex;align-items:center;gap:8px;font-size:.88rem;cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+
+/* stats strip */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.stat{background:var(--panel);padding:12px 16px}
+.stat .v{font-family:var(--font-display);font-size:calc(1.5rem * var(--dscale));font-weight:700;font-variant-numeric:tabular-nums}
+.stat .v.spark{color:var(--spark)}
+
+.banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px dashed var(--spark);border-radius:var(--r);background:color-mix(in srgb,var(--spark) 9%,var(--panel));font-size:.9rem}
+.banner b{color:var(--ink)}
+
+.hunts{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:880px){.hunts{grid-template-columns:minmax(0,1fr)}}
+.rail{display:grid;gap:10px}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px;gap:2px}
+.seg button{flex:1;border:0;background:none;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.hlist{display:grid;gap:6px;max-height:min(70vh,760px);overflow:auto;padding-right:2px}
+.hitem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:pointer;width:100%}
+.hitem:hover{border-color:var(--muted)}
+.hitem[aria-current="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.hitem .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitem .s{display:block;font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hitem .c{font-family:var(--font-mono);font-size:.85rem;font-variant-numeric:tabular-nums;text-align:right}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.st-active{background:var(--accent)} .st-paused{background:var(--muted)} .st-complete{background:var(--spark)} .st-failed{background:var(--bad)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--panel2)}
+.pill.complete{color:var(--spark);border-color:var(--spark)}
+.pill.active{color:var(--accent);border-color:var(--accent)}
+.pill.failed{color:var(--bad);border-color:var(--bad)}
+
+/* detail */
+.detail{display:grid;gap:16px;min-width:0}
+.dhead{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.dhead h2{font-size:calc(1.8rem * var(--dscale))}
+.meta{color:var(--muted);font-size:.88rem;margin-top:4px}
+.counter{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:0}
+@media (max-width:720px){.counter{grid-template-columns:minmax(0,1fr)}}
+.cmain{padding:22px;border-right:1px solid var(--line);display:grid;gap:14px;align-content:start}
+@media (max-width:720px){.cmain{border-right:0;border-bottom:1px solid var(--line)}}
+.count{font-family:var(--font-display);font-size:calc(clamp(3.6rem,10vw,6.2rem) * var(--dscale));font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em;overflow-wrap:anywhere}
+.count.bump{animation:bump .18s ease-out}
+@keyframes bump{from{transform:translateY(-3px)}to{transform:none}}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap}
+.cbtns .big{font-size:1.15rem;padding:14px 22px;min-width:120px}
+.chainbox{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2)}
+.chainbox .cv{font-family:var(--font-mono);font-size:1.25rem;font-weight:600;min-width:3ch}
+.codds{padding:22px;display:grid;gap:12px;align-content:start}
+.live{display:grid;gap:6px}
+.livepct{font-family:var(--font-display);font-size:calc(2rem * var(--dscale));font-weight:700;color:var(--spark);font-variant-numeric:tabular-nums;line-height:1.1}
+.oddsbig{font-family:var(--font-mono);font-size:1.7rem;font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.88rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
+.track{width:100%;height:auto;display:block}
+.track .area{fill:color-mix(in srgb,var(--accent) 14%,transparent)}
+.track .curve{fill:none;stroke:var(--accent);stroke-width:2}
+.track .grid{stroke:var(--line);stroke-width:1}
+.track .ref{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+.track .now{stroke:var(--spark);stroke-width:2}
+.track .nowdot{fill:var(--spark)}
+.track text{fill:var(--muted);font-family:var(--font-mono);font-size:11px}
+.cards3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
+.timer{font-family:var(--font-mono);font-size:1.6rem;font-weight:600;font-variant-numeric:tabular-nums}
+.phases{display:grid;gap:6px;margin:0;padding:0;list-style:none;max-height:220px;overflow:auto}
+.phases li{display:flex;justify-content:space-between;gap:10px;font-size:.88rem;padding:6px 10px;border-radius:7px;background:var(--panel2)}
+.empty{padding:40px 22px;text-align:center;display:grid;gap:12px;justify-items:center}
+.kbd{font-family:var(--font-mono);font-size:.75rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--panel2)}
+.found{position:relative;overflow:hidden}
+.found::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 30%,color-mix(in srgb,var(--spark) 22%,transparent) 0 6%,transparent 7%),radial-gradient(circle at 70% 20%,color-mix(in srgb,var(--spark) 18%,transparent) 0 4%,transparent 5%),radial-gradient(circle at 85% 70%,color-mix(in srgb,var(--spark) 20%,transparent) 0 5%,transparent 6%)}
+.burst{animation:burst 1.1s ease-out}
+@keyframes burst{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--spark) 70%,transparent)}100%{box-shadow:0 0 0 26px transparent}}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,10,14,.55);display:grid;place-items:start center;padding:6vh 16px;z-index:50;overflow:auto}
+.modal{width:min(640px,100%);display:grid;gap:14px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.mods{display:flex;gap:14px;flex-wrap:wrap;align-items:end}
+.combo{position:relative;display:grid;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600;min-width:0}
+.combolist{position:absolute;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;max-height:260px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:5}
+.combolist li{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer;color:var(--ink);font-weight:500;font-size:.9rem}
+.combolist li[aria-selected="true"],.combolist li[data-id]:hover{background:var(--panel2)}
+.combolist li.none{color:var(--muted);cursor:default}
+.oddsprev{font-family:var(--font-mono);padding:10px 12px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);font-size:.9rem}
+
+/* tables */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:9px}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--panel2);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hit td{background:color-mix(in srgb,var(--spark) 14%,transparent)}
+.best{color:var(--spark);font-weight:700}
+
+/* rng */
+.gen{display:grid;gap:10px}
+.gen h3{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.gen .tag{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);font-weight:500}
+.gen p,.gen ul{margin:0;font-size:.9rem;max-width:72ch}
+.gen ul{padding-left:18px}
+.tool{display:grid;gap:12px}
+.out{font-family:var(--font-mono);font-size:.9rem;padding:10px 12px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);overflow-wrap:anywhere}
+.out.yes{border-color:var(--spark);color:var(--ink);background:color-mix(in srgb,var(--spark) 14%,var(--panel))}
+.tfields{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.clock{font-family:var(--font-mono);font-size:clamp(2.4rem,8vw,3.6rem);font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.bar{height:8px;border-radius:99px;background:var(--panel2);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--accent);width:0}
+.subnav{display:flex;gap:6px;flex-wrap:wrap}
+.subnav button{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 12px;cursor:pointer;font-size:.82rem;font-weight:600}
+.subnav button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+
+/* themes */
+.skingroup{display:grid;gap:10px}
+.skins{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.sw{border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:0;text-align:left;background:var(--panel)}
+.sw[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:2px}
+.sw .top{height:22px;display:flex;align-items:center;padding:0 8px;gap:5px}
+.sw .top i{width:6px;height:6px;border-radius:50%;display:block}
+.sw .body{padding:10px;display:grid;gap:6px}
+.sw .card{border-radius:6px;padding:7px 8px;display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
+.sw .n{font-weight:600;font-size:.82rem;padding:8px 10px;border-top:1px solid var(--line);color:var(--ink);background:var(--panel)}
+.note{font-size:.84rem;color:var(--muted);max-width:75ch}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:.88rem;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+
+/* ---------- touch & phone ---------- */
+button,a,.count,.tap{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media (min-width:721px){.only-m{display:none!important}}
+.mswitch{display:none}
+.bnav{display:none}
+.mbar{display:none}
+.sheet-scrim{display:none}
+@media (hover:none){.btn:hover,.hitem:hover{border-color:var(--line)}}
+@media (max-width:720px){
+  .only-d{display:none!important}
+  body{font-size:16px}
+  label.f input,label.f select,label.f textarea,.inp,.skin-pick select{font-size:16px}
+  .chrome-in{flex-wrap:nowrap;padding-block:8px}
+  .chrome .tabs{display:none}
+  .brand b{font-size:calc(1.05rem * var(--dscale))}
+  .skin-pick span{display:none}
+  .skin-pick select{max-width:34vw}
+  .syncpill{padding:0;width:36px;height:36px;justify-content:center;flex:none}
+  .syncpill i{width:10px;height:10px}
+  .syncpill span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .brand b{overflow:hidden;text-overflow:ellipsis}
+  .brand b{white-space:nowrap}
+  main{padding-block:14px calc(160px + env(safe-area-inset-bottom,0px))}
+  .page{gap:14px}
+  h2{font-size:calc(1.2rem * var(--dscale))}
+  .pad{padding:14px}
+  .btn{padding:10px 14px;min-height:42px}
+  /* bottom tab bar */
+  .chrome-in{gap:8px}
+  .bnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--chrome);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .bnav button{background:none;border:0;color:var(--chrome-ink);opacity:.62;display:grid;justify-items:center;gap:2px;padding:8px 2px 7px;font-size:.68rem;font-weight:600;cursor:pointer;min-height:54px}
+  .bnav button svg{width:22px;height:22px}
+  .bnav button[aria-selected="true"]{opacity:1}
+  .bnav button[aria-selected="true"] svg{color:var(--star,var(--spark))}
+  /* stats scroll row */
+  .stats{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .stats::-webkit-scrollbar{display:none}
+  .stat{flex:0 0 auto;min-width:138px;scroll-snap-align:start;padding:10px 14px}
+  .stat .v{font-size:calc(1.25rem * var(--dscale))}
+  /* hunt list becomes a bottom sheet */
+  .mswitch{display:flex;gap:8px}
+  .mswitch .btn{flex:1;display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0}
+  .mswitch .btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rail{position:fixed;left:0;right:0;bottom:0;z-index:45;background:var(--bg);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));max-height:82vh;overflow:auto;transform:translateY(105%);transition:transform .22s ease;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+  .rail.open{transform:none}
+  .rail .grab{display:block;width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 6px}
+  .rail .hlist{max-height:none;overflow:visible}
+  .sheet-scrim{display:block;position:fixed;inset:0;z-index:44;background:rgba(10,10,14,.5)}
+  .sheet-scrim[hidden]{display:none}
+  .hitem{padding:12px 14px}
+  /* detail */
+  .dhead{gap:10px}
+  .dhead h2{font-size:calc(1.5rem * var(--dscale))}
+  .dhead .row .btn{padding:8px 11px;min-height:38px;font-size:.84rem}
+  .cmain,.codds{padding:16px}
+  .cbtns .tapbtn{display:none}
+  .chainbox .btn{min-width:44px}
+  /* fixed counter bar in thumb reach */
+  .mbar{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;position:fixed;left:0;right:0;bottom:calc(54px + env(safe-area-inset-bottom,0px));z-index:29;padding:8px 12px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  .mbar .btn{min-height:56px;font-size:1.05rem;padding:0}
+  .mbar .plus{font-size:1.35rem;font-family:var(--font-display);display:flex;align-items:center;justify-content:center;gap:10px}
+  .mbar .plus small{font-family:var(--font-mono);font-size:.82rem;opacity:.85;font-weight:500}
+  /* modal as full sheet */
+  .scrim{padding:0;place-items:end stretch}
+  .modal{width:100%;min-height:100%;border-radius:0;border:0;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));align-content:start}
+  .modal .actions{position:sticky;bottom:0;background:var(--panel);padding-top:10px;margin-bottom:-4px;border-top:1px solid var(--line)}
+  .modal .actions .btn{flex:1}
+  /* stacked tables */
+  .tw.stack{border:0;overflow:visible}
+  .tw.stack table,.tw.stack tbody,.tw.stack tr,.tw.stack td{display:block;width:100%}
+  .tw.stack thead{display:none}
+  .tw.stack tr{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--panel);overflow:hidden}
+  .tw.stack td{border-bottom:1px solid var(--line);padding:8px 12px;text-align:left;white-space:normal}
+  .tw.stack td:last-child{border-bottom:0}
+  .tw.stack td[data-label]::before{content:attr(data-label);display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:var(--font-body);font-weight:600}
+  .tw.stack td.num{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .tw.stack td.num::before{display:inline}
+  .subnav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+  .subnav::-webkit-scrollbar{display:none}
+  .subnav button{flex:0 0 auto;padding:8px 14px}
+  .skins{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))}
+}
+/* focus mode */
+.focus{position:fixed;inset:0;z-index:55;background:var(--bg);color:var(--ink);display:grid;grid-template-rows:auto 1fr auto;padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))}
+.focus .ftop{display:flex;gap:10px;align-items:center}
+.focus .ftop .t{min-width:0;margin-right:auto}
+.focus .ftop .t b{display:block;font-family:var(--font-display);font-size:calc(1.3rem * var(--dscale));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.focus .tap{border:0;border-radius:20px;margin:12px 0;background:var(--panel);border:1px solid var(--line);display:grid;place-content:center;justify-items:center;gap:10px;cursor:pointer;color:var(--ink);user-select:none;-webkit-user-select:none;padding:16px}
+.focus .tap:active{background:var(--panel2)}
+.focus .fcount{font-family:var(--font-display);font-weight:700;font-size:calc(clamp(4.5rem,24vw,10rem) * var(--dscale));line-height:1;font-variant-numeric:tabular-nums}
+.focus .fpct{font-family:var(--font-display);font-weight:700;font-size:calc(1.6rem * var(--dscale));color:var(--spark)}
+.focus .hint{font-size:.82rem;color:var(--muted)}
+.focus .fbot{display:flex;gap:8px;flex-wrap:wrap}
+.focus .fbot .btn{flex:1;min-height:50px;min-width:0}
+.focus .fchain{display:flex;gap:8px;align-items:center;width:100%;justify-content:center;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="chrome">
+  <div class="chrome-in">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l3.2 9.4L29 14l-9.8 3.2L16 30l-3.2-12.8L3 14l9.8-2.6z" fill="var(--star, var(--spark))"/><path d="M26 2l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill="var(--chrome-ink)" opacity=".8"/></svg>
+      <b>Shiny Ledger</b>
+    </div>
+    <button class="syncpill" id="syncBtn" type="button" data-s="local"><i></i><span>This device</span></button>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="hunts" aria-selected="true">Hunts</button>
+      <button role="tab" data-tab="odds" aria-selected="false">Odds Lab</button>
+      <button role="tab" data-tab="rng" aria-selected="false">RNG Lab</button>
+      <button role="tab" data-tab="guide" aria-selected="false">Methods</button>
+      <button role="tab" data-tab="themes" aria-selected="false">Themes</button>
+    </nav>
+    <label class="skin-pick"><span>Theme</span> <select id="skinSel" aria-label="Theme"></select></label>
+  </div>
+</header>
+
+<main>
+  <section id="tab-hunts" class="page"></section>
+  <section id="tab-odds" class="page" hidden></section>
+  <section id="tab-rng" class="page" hidden></section>
+  <section id="tab-guide" class="page" hidden></section>
+  <section id="tab-themes" class="page" hidden></section>
+</main>
+<div id="focusRoot"></div>
+<div id="modalRoot"></div>
+<nav class="bnav" role="tablist" aria-label="Sections"><button role="tab" data-tab="hunts" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.4 7L22 10.5l-7.4 2.4L12 22l-2.6-9.1L2 10.5 9.6 9z"/></svg>Hunts</button><button role="tab" data-tab="odds" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M4 18c4 0 5-12 9-12s4 8 7 8"/></svg>Odds</button><button role="tab" data-tab="rng" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>RNG</button><button role="tab" data-tab="guide" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6a2 2 0 012 2v14a2 2 0 00-2-2H4zM20 4h-6a2 2 0 00-2 2v14a2 2 0 012-2h6z"/></svg>Methods</button><button role="tab" data-tab="themes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 100 18c1.1 0 1.6-.9 1.2-1.8-.5-1-.1-2.2 1.2-2.2H17a4 4 0 004-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="11" cy="7" r="1.2"/><circle cx="15.5" cy="8" r="1.2"/></svg>Themes</button></nav>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+/* ============ helpers ============ */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=n=>Number(n||0).toLocaleString();
+const uid=()=>'h'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
+function fmtDen(p){if(!p||p<=0)return '—';if(p>=1)return '1/1';const d=1/p;return '1/'+(d>=1000?Math.round(d).toLocaleString():d.toFixed(d<10?2:1).replace(/\.0$/,''))}
+function pct(x){if(x>=.9995)return '99.9%+';return (x*100).toFixed(x<.1?2:1)+'%'}
+function cum(p,n){return p?1-Math.pow(1-p,n):0}
+function needFor(p,q){return p? Math.ceil(Math.log(1-q)/Math.log(1-p)):Infinity}
+function fmtTime(ms){ms=Math.max(0,ms|0);const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;return (h?h+':':'')+String(m).padStart(h?2:1,'0')+':'+String(ss).padStart(2,'0')}
+
+/* ============ game data ============ */
+const GAMES={
+  gsc:{n:'Gold / Silver / Crystal',s:'GSC',gen:2,base:8192,charm:0},
+  rse:{n:'Ruby / Sapphire / Emerald',s:'RSE',gen:3,base:8192,charm:0},
+  frlg:{n:'FireRed / LeafGreen',s:'FRLG',gen:3,base:8192,charm:0},
+  colxd:{n:'Colosseum / XD',s:'Colo/XD',gen:3,base:8192,charm:0},
+  dppt:{n:'Diamond / Pearl / Platinum',s:'DPPt',gen:4,base:8192,charm:0},
+  hgss:{n:'HeartGold / SoulSilver',s:'HGSS',gen:4,base:8192,charm:0},
+  bw:{n:'Black / White',s:'BW',gen:5,base:8192,charm:0},
+  b2w2:{n:'Black 2 / White 2',s:'B2W2',gen:5,base:8192,charm:2},
+  xy:{n:'X / Y',s:'XY',gen:6,base:4096,charm:2},
+  oras:{n:'Omega Ruby / Alpha Sapphire',s:'ORAS',gen:6,base:4096,charm:2},
+  sm:{n:'Sun / Moon',s:'SM',gen:7,base:4096,charm:2},
+  usum:{n:'Ultra Sun / Ultra Moon',s:'USUM',gen:7,base:4096,charm:2},
+  lgpe:{n:"Let's Go Pikachu / Eevee",s:'LGPE',gen:7,base:4096,charm:2},
+  swsh:{n:'Sword / Shield',s:'SwSh',gen:8,base:4096,charm:2},
+  bdsp:{n:'Brilliant Diamond / Shining Pearl',s:'BDSP',gen:8,base:4096,charm:2},
+  pla:{n:'Legends: Arceus',s:'PLA',gen:8,base:4096,charm:3},
+  sv:{n:'Scarlet / Violet',s:'SV',gen:9,base:4096,charm:2},
+  za:{n:'Legends: Z-A',s:'Z-A',gen:9,base:4096,charm:3}
+};
+const GKEYS=Object.keys(GAMES);
+/* Species availability per game, built from PokéAPI regional dexes, encounter tables and evolution families. */
+const DEXRAW={"keys": ["gsc", "rse", "frlg", "colxd", "dppt", "hgss", "bw", "b2w2", "xy", "oras", "sm", "usum", "lgpe", "swsh", "bdsp", "pla", "sv", "za"], "names": "Bulbasaur|Ivysaur|Venusaur|Charmander|Charmeleon|Charizard|Squirtle|Wartortle|Blastoise|Caterpie|Metapod|Butterfree|Weedle|Kakuna|Beedrill|Pidgey|Pidgeotto|Pidgeot|Rattata|Raticate|Spearow|Fearow|Ekans|Arbok|Pikachu|Raichu|Sandshrew|Sandslash|Nidoran♀|Nidorina|Nidoqueen|Nidoran♂|Nidorino|Nidoking|Clefairy|Clefable|Vulpix|Ninetales|Jigglypuff|Wigglytuff|Zubat|Golbat|Oddish|Gloom|Vileplume|Paras|Parasect|Venonat|Venomoth|Diglett|Dugtrio|Meowth|Persian|Psyduck|Golduck|Mankey|Primeape|Growlithe|Arcanine|Poliwag|Poliwhirl|Poliwrath|Abra|Kadabra|Alakazam|Machop|Machoke|Machamp|Bellsprout|Weepinbell|Victreebel|Tentacool|Tentacruel|Geodude|Graveler|Golem|Ponyta|Rapidash|Slowpoke|Slowbro|Magnemite|Magneton|Farfetch’d|Doduo|Dodrio|Seel|Dewgong|Grimer|Muk|Shellder|Cloyster|Gastly|Haunter|Gengar|Onix|Drowzee|Hypno|Krabby|Kingler|Voltorb|Electrode|Exeggcute|Exeggutor|Cubone|Marowak|Hitmonlee|Hitmonchan|Lickitung|Koffing|Weezing|Rhyhorn|Rhydon|Chansey|Tangela|Kangaskhan|Horsea|Seadra|Goldeen|Seaking|Staryu|Starmie|Mr. Mime|Scyther|Jynx|Electabuzz|Magmar|Pinsir|Tauros|Magikarp|Gyarados|Lapras|Ditto|Eevee|Vaporeon|Jolteon|Flareon|Porygon|Omanyte|Omastar|Kabuto|Kabutops|Aerodactyl|Snorlax|Articuno|Zapdos|Moltres|Dratini|Dragonair|Dragonite|Mewtwo|Mew|Chikorita|Bayleef|Meganium|Cyndaquil|Quilava|Typhlosion|Totodile|Croconaw|Feraligatr|Sentret|Furret|Hoothoot|Noctowl|Ledyba|Ledian|Spinarak|Ariados|Crobat|Chinchou|Lanturn|Pichu|Cleffa|Igglybuff|Togepi|Togetic|Natu|Xatu|Mareep|Flaaffy|Ampharos|Bellossom|Marill|Azumarill|Sudowoodo|Politoed|Hoppip|Skiploom|Jumpluff|Aipom|Sunkern|Sunflora|Yanma|Wooper|Quagsire|Espeon|Umbreon|Murkrow|Slowking|Misdreavus|Unown|Wobbuffet|Girafarig|Pineco|Forretress|Dunsparce|Gligar|Steelix|Snubbull|Granbull|Qwilfish|Scizor|Shuckle|Heracross|Sneasel|Teddiursa|Ursaring|Slugma|Magcargo|Swinub|Piloswine|Corsola|Remoraid|Octillery|Delibird|Mantine|Skarmory|Houndour|Houndoom|Kingdra|Phanpy|Donphan|Porygon2|Stantler|Smeargle|Tyrogue|Hitmontop|Smoochum|Elekid|Magby|Miltank|Blissey|Raikou|Entei|Suicune|Larvitar|Pupitar|Tyranitar|Lugia|Ho-Oh|Celebi|Treecko|Grovyle|Sceptile|Torchic|Combusken|Blaziken|Mudkip|Marshtomp|Swampert|Poochyena|Mightyena|Zigzagoon|Linoone|Wurmple|Silcoon|Beautifly|Cascoon|Dustox|Lotad|Lombre|Ludicolo|Seedot|Nuzleaf|Shiftry|Taillow|Swellow|Wingull|Pelipper|Ralts|Kirlia|Gardevoir|Surskit|Masquerain|Shroomish|Breloom|Slakoth|Vigoroth|Slaking|Nincada|Ninjask|Shedinja|Whismur|Loudred|Exploud|Makuhita|Hariyama|Azurill|Nosepass|Skitty|Delcatty|Sableye|Mawile|Aron|Lairon|Aggron|Meditite|Medicham|Electrike|Manectric|Plusle|Minun|Volbeat|Illumise|Roselia|Gulpin|Swalot|Carvanha|Sharpedo|Wailmer|Wailord|Numel|Camerupt|Torkoal|Spoink|Grumpig|Spinda|Trapinch|Vibrava|Flygon|Cacnea|Cacturne|Swablu|Altaria|Zangoose|Seviper|Lunatone|Solrock|Barboach|Whiscash|Corphish|Crawdaunt|Baltoy|Claydol|Lileep|Cradily|Anorith|Armaldo|Feebas|Milotic|Castform|Kecleon|Shuppet|Banette|Duskull|Dusclops|Tropius|Chimecho|Absol|Wynaut|Snorunt|Glalie|Spheal|Sealeo|Walrein|Clamperl|Huntail|Gorebyss|Relicanth|Luvdisc|Bagon|Shelgon|Salamence|Beldum|Metang|Metagross|Regirock|Regice|Registeel|Latias|Latios|Kyogre|Groudon|Rayquaza|Jirachi|Deoxys|Turtwig|Grotle|Torterra|Chimchar|Monferno|Infernape|Piplup|Prinplup|Empoleon|Starly|Staravia|Staraptor|Bidoof|Bibarel|Kricketot|Kricketune|Shinx|Luxio|Luxray|Budew|Roserade|Cranidos|Rampardos|Shieldon|Bastiodon|Burmy|Wormadam|Mothim|Combee|Vespiquen|Pachirisu|Buizel|Floatzel|Cherubi|Cherrim|Shellos|Gastrodon|Ambipom|Drifloon|Drifblim|Buneary|Lopunny|Mismagius|Honchkrow|Glameow|Purugly|Chingling|Stunky|Skuntank|Bronzor|Bronzong|Bonsly|Mime Jr.|Happiny|Chatot|Spiritomb|Gible|Gabite|Garchomp|Munchlax|Riolu|Lucario|Hippopotas|Hippowdon|Skorupi|Drapion|Croagunk|Toxicroak|Carnivine|Finneon|Lumineon|Mantyke|Snover|Abomasnow|Weavile|Magnezone|Lickilicky|Rhyperior|Tangrowth|Electivire|Magmortar|Togekiss|Yanmega|Leafeon|Glaceon|Gliscor|Mamoswine|Porygon-Z|Gallade|Probopass|Dusknoir|Froslass|Rotom|Uxie|Mesprit|Azelf|Dialga|Palkia|Heatran|Regigigas|Giratina|Cresselia|Phione|Manaphy|Darkrai|Shaymin|Arceus|Victini|Snivy|Servine|Serperior|Tepig|Pignite|Emboar|Oshawott|Dewott|Samurott|Patrat|Watchog|Lillipup|Herdier|Stoutland|Purrloin|Liepard|Pansage|Simisage|Pansear|Simisear|Panpour|Simipour|Munna|Musharna|Pidove|Tranquill|Unfezant|Blitzle|Zebstrika|Roggenrola|Boldore|Gigalith|Woobat|Swoobat|Drilbur|Excadrill|Audino|Timburr|Gurdurr|Conkeldurr|Tympole|Palpitoad|Seismitoad|Throh|Sawk|Sewaddle|Swadloon|Leavanny|Venipede|Whirlipede|Scolipede|Cottonee|Whimsicott|Petilil|Lilligant|Basculin|Sandile|Krokorok|Krookodile|Darumaka|Darmanitan|Maractus|Dwebble|Crustle|Scraggy|Scrafty|Sigilyph|Yamask|Cofagrigus|Tirtouga|Carracosta|Archen|Archeops|Trubbish|Garbodor|Zorua|Zoroark|Minccino|Cinccino|Gothita|Gothorita|Gothitelle|Solosis|Duosion|Reuniclus|Ducklett|Swanna|Vanillite|Vanillish|Vanilluxe|Deerling|Sawsbuck|Emolga|Karrablast|Escavalier|Foongus|Amoonguss|Frillish|Jellicent|Alomomola|Joltik|Galvantula|Ferroseed|Ferrothorn|Klink|Klang|Klinklang|Tynamo|Eelektrik|Eelektross|Elgyem|Beheeyem|Litwick|Lampent|Chandelure|Axew|Fraxure|Haxorus|Cubchoo|Beartic|Cryogonal|Shelmet|Accelgor|Stunfisk|Mienfoo|Mienshao|Druddigon|Golett|Golurk|Pawniard|Bisharp|Bouffalant|Rufflet|Braviary|Vullaby|Mandibuzz|Heatmor|Durant|Deino|Zweilous|Hydreigon|Larvesta|Volcarona|Cobalion|Terrakion|Virizion|Tornadus|Thundurus|Reshiram|Zekrom|Landorus|Kyurem|Keldeo|Meloetta|Genesect|Chespin|Quilladin|Chesnaught|Fennekin|Braixen|Delphox|Froakie|Frogadier|Greninja|Bunnelby|Diggersby|Fletchling|Fletchinder|Talonflame|Scatterbug|Spewpa|Vivillon|Litleo|Pyroar|Flabébé|Floette|Florges|Skiddo|Gogoat|Pancham|Pangoro|Furfrou|Espurr|Meowstic|Honedge|Doublade|Aegislash|Spritzee|Aromatisse|Swirlix|Slurpuff|Inkay|Malamar|Binacle|Barbaracle|Skrelp|Dragalge|Clauncher|Clawitzer|Helioptile|Heliolisk|Tyrunt|Tyrantrum|Amaura|Aurorus|Sylveon|Hawlucha|Dedenne|Carbink|Goomy|Sliggoo|Goodra|Klefki|Phantump|Trevenant|Pumpkaboo|Gourgeist|Bergmite|Avalugg|Noibat|Noivern|Xerneas|Yveltal|Zygarde|Diancie|Hoopa|Volcanion|Rowlet|Dartrix|Decidueye|Litten|Torracat|Incineroar|Popplio|Brionne|Primarina|Pikipek|Trumbeak|Toucannon|Yungoos|Gumshoos|Grubbin|Charjabug|Vikavolt|Crabrawler|Crabominable|Oricorio|Cutiefly|Ribombee|Rockruff|Lycanroc|Wishiwashi|Mareanie|Toxapex|Mudbray|Mudsdale|Dewpider|Araquanid|Fomantis|Lurantis|Morelull|Shiinotic|Salandit|Salazzle|Stufful|Bewear|Bounsweet|Steenee|Tsareena|Comfey|Oranguru|Passimian|Wimpod|Golisopod|Sandygast|Palossand|Pyukumuku|Type: Null|Silvally|Minior|Komala|Turtonator|Togedemaru|Mimikyu|Bruxish|Drampa|Dhelmise|Jangmo-o|Hakamo-o|Kommo-o|Tapu Koko|Tapu Lele|Tapu Bulu|Tapu Fini|Cosmog|Cosmoem|Solgaleo|Lunala|Nihilego|Buzzwole|Pheromosa|Xurkitree|Celesteela|Kartana|Guzzlord|Necrozma|Magearna|Marshadow|Poipole|Naganadel|Stakataka|Blacephalon|Zeraora|Meltan|Melmetal|Grookey|Thwackey|Rillaboom|Scorbunny|Raboot|Cinderace|Sobble|Drizzile|Inteleon|Skwovet|Greedent|Rookidee|Corvisquire|Corviknight|Blipbug|Dottler|Orbeetle|Nickit|Thievul|Gossifleur|Eldegoss|Wooloo|Dubwool|Chewtle|Drednaw|Yamper|Boltund|Rolycoly|Carkol|Coalossal|Applin|Flapple|Appletun|Silicobra|Sandaconda|Cramorant|Arrokuda|Barraskewda|Toxel|Toxtricity|Sizzlipede|Centiskorch|Clobbopus|Grapploct|Sinistea|Polteageist|Hatenna|Hattrem|Hatterene|Impidimp|Morgrem|Grimmsnarl|Obstagoon|Perrserker|Cursola|Sirfetch’d|Mr. Rime|Runerigus|Milcery|Alcremie|Falinks|Pincurchin|Snom|Frosmoth|Stonjourner|Eiscue|Indeedee|Morpeko|Cufant|Copperajah|Dracozolt|Arctozolt|Dracovish|Arctovish|Duraludon|Dreepy|Drakloak|Dragapult|Zacian|Zamazenta|Eternatus|Kubfu|Urshifu|Zarude|Regieleki|Regidrago|Glastrier|Spectrier|Calyrex|Wyrdeer|Kleavor|Ursaluna|Basculegion|Sneasler|Overqwil|Enamorus|Sprigatito|Floragato|Meowscarada|Fuecoco|Crocalor|Skeledirge|Quaxly|Quaxwell|Quaquaval|Lechonk|Oinkologne|Tarountula|Spidops|Nymble|Lokix|Pawmi|Pawmo|Pawmot|Tandemaus|Maushold|Fidough|Dachsbun|Smoliv|Dolliv|Arboliva|Squawkabilly|Nacli|Naclstack|Garganacl|Charcadet|Armarouge|Ceruledge|Tadbulb|Bellibolt|Wattrel|Kilowattrel|Maschiff|Mabosstiff|Shroodle|Grafaiai|Bramblin|Brambleghast|Toedscool|Toedscruel|Klawf|Capsakid|Scovillain|Rellor|Rabsca|Flittle|Espathra|Tinkatink|Tinkatuff|Tinkaton|Wiglett|Wugtrio|Bombirdier|Finizen|Palafin|Varoom|Revavroom|Cyclizar|Orthworm|Glimmet|Glimmora|Greavard|Houndstone|Flamigo|Cetoddle|Cetitan|Veluza|Dondozo|Tatsugiri|Annihilape|Clodsire|Farigiraf|Dudunsparce|Kingambit|Great Tusk|Scream Tail|Brute Bonnet|Flutter Mane|Slither Wing|Sandy Shocks|Iron Treads|Iron Bundle|Iron Hands|Iron Jugulis|Iron Moth|Iron Thorns|Frigibax|Arctibax|Baxcalibur|Gimmighoul|Gholdengo|Wo-Chien|Chien-Pao|Ting-Lu|Chi-Yu|Roaring Moon|Iron Valiant|Koraidon|Miraidon|Walking Wake|Iron Leaves|Dipplin|Poltchageist|Sinistcha|Okidogi|Munkidori|Fezandipiti|Ogerpon|Archaludon|Hydrapple|Gouging Fire|Raging Bolt|Iron Boulder|Iron Crown|Terapagos|Pecharunt", "masks": "37924,37924,37924,37924,37924,37924,37924,37924,37924,7dfd,7dfd,7dfd,259fd,259fd,259fd,2593d,2593d,2593d,5cfd,5cfd,5d7d,5d7d,3593d,3593d,3ff37,3ff37,17fff,17fff,71b5,71b5,71b5,71b5,71b5,71b5,3fdf5,3fdf5,1ffff,1ffff,37ff7,37ff7,2ffff,2ffff,17337,17337,17337,dd3d,dd3d,153fd,153fd,17d3d,17d3d,37e3f,37e3f,1ffff,1ffff,35d3d,35d3d,1fdbd,1fdbd,17dfd,17dfd,17dfd,2ffb7,2ffb7,2ffb7,2ff37,2ff37,2ff37,3553d,3553d,3553d,1ff37,1ff37,1df77,1df77,1df77,f17d,f17d,37f75,37f75,1ffbf,1ffbf,2713d,1533f,1533f,159fd,159fd,15fbf,15fbf,17dfd,17dfd,3fd35,3fd35,3fd35,2fbf5,15d3d,15d3d,71f5,71f5,1df3f,1df3f,17d3d,17d3d,27d7d,27d7d,1713d,1713d,f9fd,172b7,172b7,1ff3f,1ff3f,1ffbd,f3fd,27d7d,17ff7,17ff7,7ff7,7ff7,27fff,27fff,2f93d,3fd3c,7975,1ffbd,1ffbd,27ffe,17d3d,3fff7,3fff7,17dfd,17ff7,3fdbd,3fdbd,3fdbd,3fdbd,3fe35,78f4,78f4,78f4,78f4,27df5,1fd3d,793c,793c,793c,37dfd,37dfd,37dfd,27924,2,3462b,3462b,3462b,1c62b,1c62b,1c62b,3462b,3462b,3462b,1413d,1413d,169fb,169fb,4d7f,4d7f,34f7f,34f7f,2efff,16ff3,16ff3,3ef37,3edf5,36ff7,e73d,e73d,6b3f,6b3f,349bf,349bf,349bf,16337,167b7,167b7,1ed3b,16dfd,1413d,1413d,1413d,1c9bf,143fb,143fb,1c9bd,1693f,1693f,3edbd,3edbd,1cdfd,36f75,1cc7d,c235,6337,143b3,14b3f,14b3f,169fd,1c1fb,2ebf5,14dbb,14dbb,3e1fd,3ed3c,61ff,3ebff,1edfd,1c13f,1c13f,14b3f,14b3f,1edfd,1edfd,6ff3,e9ff,e9ff,36dfd,e9fd,36fbf,3493f,3493f,16ff7,1433f,1433f,3ee35,1c27f,14d3f,1613d,1613d,6975,1efbd,1efbd,6d3b,1efbd,6a2d,6a2d,6a2d,369fd,369fd,369fd,6a2f,6a2f,7,34a22,36a22,36a22,34a22,36a22,36a22,34a22,36a22,36a22,1433a,1433a,6332,6332,c332,c332,c332,c332,c332,16bb2,16bb2,16bb2,16bba,16bba,16bba,4b7a,4b7a,16ff2,16ff2,3eb3a,3eb3a,3eb3a,14f3a,14f3a,143ba,143ba,146b2,146b2,146b2,6332,6332,6332,6332,6332,6332,14fba,14fba,167b6,1cfba,439a,439a,36f7a,26b7a,26bba,26bba,26bba,34bba,34bba,26bba,26bba,1433a,14332,14332,14332,2e7ba,3433a,3433a,26fda,26fda,6fd2,6fd2,343ba,343ba,16f32,34bb2,34bb2,4f32,16fba,16fba,16fba,14332,14332,36bfa,36bfa,343fa,343f2,63fa,63fa,1eff2,1eff2,16bb2,16bb2,6afa,6afa,6af2,6af2,6af2,6af2,36ed2,36ed2,4e92,24b92,34bba,34bba,1e33a,1e33a,14bda,3c372,26ffa,6336,3ef1a,3ef1a,effa,effa,effa,4bf2,4bf2,4bf2,6ff2,14ff2,36fba,36fba,36fba,36ffa,36ffa,36ffa,6a82,6a82,6a82,26aa2,26aa2,26a22,26a22,26a22,2,206,1ca10,1ca10,1ca10,1ca10,1ca10,1ca10,1ca10,1ca10,1ca10,3c530,3c530,3c530,c1f0,c1f0,1c270,1c270,1e530,1e530,1e530,2e7b0,2e7b0,1ccf0,1ccf0,1ccf0,1ccf0,c130,c130,c130,1e1f0,1e1f0,1c1b0,1c9f0,1c9f0,e270,e270,1ed10,1ed10,1c9b0,1edd0,1edd0,2e8b0,2e8b0,1cc70,1cdf0,c210,c210,3c370,1e110,1e110,1e1f0,1e1f0,1ed30,2e930,1efb0,c1b0,1e310,3edb0,3edb0,3edb0,1ed30,3edf0,3edf0,3e930,3e930,e9b0,e9b0,1e1b0,1e1b0,c1b0,1ccd0,1ccd0,e9f0,3e910,3e910,1edf0,1efb0,e9f0,1ef30,e3f0,1efb0,1efb0,e730,1c9b0,3edb0,3edb0,1c1f0,1edf0,3ee30,3eb30,1cfb0,1e330,3ef10,3e990,ea90,ea90,ea90,ea30,ea30,2ea90,ea90,ea30,ea90,0,30,10,10,10,40,106c0,106c0,106c0,306c0,306c0,306c0,186c0,186c0,186c0,201c0,201c0,2dc0,2dc0,2dc0,221c0,221c0,201c0,201c0,201c0,201c0,201c0,201c0,223c0,223c0,21c0,21c0,21c0,103c0,103c0,2fc0,2fc0,2fc0,21c0,21c0,323c0,323c0,22bc0,125c0,125c0,125c0,21c0,21c0,21c0,221c0,221c0,10dc0,10dc0,10dc0,225c0,225c0,225c0,12cc0,12cc0,1afc0,1afc0,1a9c0,32dc0,32dc0,32dc0,22c0,22c0,23c0,2bc0,2bc0,329c0,329c0,29c0,222c0,222c0,2cc0,2cc0,2cc0,2cc0,22dc0,22dc0,1a9c0,1a9c0,12bc0,12bc0,125c0,125c0,125c0,125c0,125c0,125c0,109c0,109c0,22dc0,22dc0,22dc0,101c0,101c0,22dc0,21c0,21c0,321c0,321c0,28c0,28c0,10dc0,121c0,121c0,21c0,21c0,27c0,27c0,27c0,30ec0,30ec0,30ec0,28c0,28c0,32dc0,32dc0,32dc0,12dc0,12dc0,12dc0,121c0,121c0,321c0,21c0,21c0,229c0,129c0,129c0,29c0,329c0,329c0,129c0,129c0,20c0,1afc0,1afc0,12fc0,12fc0,21c0,21c0,125c0,125c0,125c0,12bc0,12bc0,22ac0,22ac0,22ac0,aac0,aac0,2ac0,2ac0,aac0,2ac0,2000,0,0,30900,30900,30900,30900,30900,30900,30900,30900,30900,22100,22100,32d00,32d00,32d00,30900,30900,30900,30900,30900,30900,30900,30900,30100,30100,22d00,22d00,20900,32100,32100,22d00,22d00,22d00,22100,22100,22100,22100,32900,32900,22b00,22b00,32900,32900,32900,32900,22900,22900,22900,22900,22900,22900,3ad00,32900,32900,32d00,3ad00,3ad00,3ad00,32d00,32d00,32d00,22100,22100,3a100,3a100,32900,32900,22900,22900,22d00,0,0,0,1ac00,18c00,18c00,12c00,10c00,10c00,12c00,10c00,10c00,10c00,10c00,10c00,10c00,10c00,12c00,12c00,12c00,30c00,30c00,10c00,12c00,12c00,12c00,12c00,2c00,12c00,12c00,12c00,12c00,12c00,12c00,12c00,12c00,2c00,2c00,12c00,12c00,2c00,2c00,12c00,12c00,12c00,12c00,12c00,12c00,22c00,22c00,32c00,32c00,2c00,2c00,2c00,10c00,10c00,2c00,2c00,32c00,10c00,22c00,2c00,12c00,12c00,12c00,2c00,2c00,2c00,2c00,2c00,c00,2c00,2c00,2c00,2c00,2c00,2c00,2c00,2c00,2c00,2c00,800,0,2800,800,2800,2800,0,0,0,12000,12000,12000,12000,12000,12000,12000,12000,12000,12000,12000,32000,32000,32000,2000,2000,2000,22000,22000,2000,2000,2000,2000,12000,12000,2000,2000,12000,12000,12000,12000,12000,12000,12000,12000,12000,12000,12000,32000,32000,2000,2000,22000,22000,12000,12000,12000,12000,12000,12000,12000,12000,2000,22000,2000,22000,22000,22000,12000,12000,32000,12000,12000,12000,12000,12000,32000,32000,12000,12000,2000,2000,2000,2000,12000,12000,12000,12000,2000,2000,2000,2000,2000,0,2000,2000,2000,2000,2000,8000,38000,18000,18000,8000,38000,8000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,30000,30000,10000,10000,10000,30000,30000,30000,30000,30000,30000,30000,10000,10000,10000,10000,30000,30000,30000,30000,10000,10000,10000,10000,10000,30000,30000,10000,10000,10000,10000,30000,30000,30000,10000,10000,10000,10000,10000,10000,10000,30000,10000,30000,30000,30000,30000,30000,10000,10000,10000,30000,30000,30000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,30000,30000,30000,30000,30000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,0"};
+const DEX={keys:DEXRAW.keys,names:DEXRAW.names.split('|'),masks:DEXRAW.masks.split(',').map(x=>parseInt(x,16))};
+function dexAvail(id,gk){if(!gk||!id)return true;const b=DEX.keys.indexOf(gk);return b<0||((DEX.masks[id-1]>>b)&1)===1}
+function dexFind(name){const n=String(name||'').trim().toLowerCase();const i=DEX.names.findIndex(x=>x.toLowerCase()===n);return i<0?null:i+1}
+const dexNo=id=>'#'+String(id).padStart(4,'0');
+const RNG_GAMES=['gsc','rse','frlg','colxd','dppt','hgss','bw','b2w2','xy','oras','sm','usum','lgpe','swsh','bdsp','pla','sv'];
+const ENC=['Random wild (grass / cave)','Surfing','Fishing','Static / legendary','Gift Pokémon','Egg / breeding','Fossil revival','Roaming','Horde','SOS call','Overworld symbol','Mass outbreak','Massive mass outbreak','Swarm','Headbutt / Rock Smash','Honey tree','Poké Radar patch','DexNav','Friend Safari','Hidden Grotto','Max Raid','Tera Raid','Dynamax Adventure','Ultra Wormhole','Grand Underground','Wild Zone respawn','Hyperspace','In-game trade','Event / distribution','Other'];
+
+const R=(n,b)=>1-Math.pow(1-1/b,n);
+const CH=(g,m)=>m.charm?g.charm:0;
+const MODDEF={
+  charm:{label:'Shiny Charm',type:'check'},
+  research:{label:'Pokédex research',type:'select',opts:[[0,'Below Lv 10'],[1,'Research Lv 10 (+1)'],[3,'Perfect (+3)']]},
+  outbreak:{label:'Outbreak',type:'select',opts:[[0,'None'],[25,'Mass outbreak (+25)'],[12,'Massive mass outbreak (+12)']]},
+  spark:{label:'Sparkling Power',type:'select',opts:[[0,'None'],[1,'Lv 1 (+1)'],[2,'Lv 2 (+2)'],[3,'Lv 3 (+3)']]},
+  donut:{label:'Sparkling Power donut (DLC)',type:'select',opts:[[0,'None'],[1,'Lv 1 (+1)'],[2,'Lv 2 (+2)'],[3,'Lv 3 (+3)']]},
+  lure:{label:'Lure active',type:'check'}
+};
+const METHODS=[
+ {id:'full',n:'Full odds',games:'*',enc:'Random wild (grass / cave)',mods:['charm'],
+  d:'Random encounters at the base rate: running from wild battles, respawning overworld spawns, hatching eggs without Masuda.',
+  fn:(g,m)=>({rolls:1+CH(g,m)})},
+ {id:'sr',n:'Soft resetting',games:'*',enc:'Static / legendary',mods:['charm'],
+  d:'Save in front of a static, gift, fossil or legendary encounter and reset until it is shiny. Check the shiny-lock notes before you start.',
+  fn:(g,m)=>({rolls:1+CH(g,m)})},
+ {id:'rng',n:'RNG manipulation',games:RNG_GAMES,enc:'Static / legendary',mods:[],
+  d:'Hit a precalculated seed, delay, frame or advance. The counter tracks attempts, not encounters at random odds.',
+  fn:()=>({target:true})},
+ {id:'masuda',n:'Masuda Method',games:['dppt','hgss','bw','b2w2','xy','oras','sm','usum','swsh','bdsp','sv'],enc:'Egg / breeding',mods:['charm'],
+  d:'Breed parents from games of different languages. Gen 4 rolls 5×, Gen 5 onward rolls 6×; the Shiny Charm adds its rolls on top.',
+  fn:(g,m)=>({rolls:(g.gen===4?5:6)+CH(g,m)})},
+ {id:'g2breed',n:'Shiny-parent breeding',games:['gsc'],enc:'Egg / breeding',mods:[],
+  d:'In Gen 2, breeding with a shiny parent of the opposite gender (usually the Red Gyarados) gives eggs a 1/64 chance because DVs are inherited.',
+  fn:()=>({p:1/64})},
+ {id:'radar',n:'Poké Radar chaining',games:['dppt','bdsp','xy'],enc:'Poké Radar patch',mods:[],chain:'Radar chain',chainMax:40,
+  d:'Chain the same species from shaking grass. Odds of a shiny patch climb each chain and cap at 40. The Shiny Charm does not affect shiny patches. XY values are an approximation.',
+  fn:(g,m,c)=>{c=Math.min(c,40);
+    if(g===GAMES.bdsp) return {p:Math.ceil(65535/(4100-c*100))/65536};
+    const patch=Math.ceil(65535/(8200-c*200))/65536;
+    if(g===GAMES.xy) return {p:Math.max(R(1,4096),patch),note:'approx.'};
+    return {p:patch};}},
+ {id:'fishing',n:'Chain fishing',games:['xy','oras'],enc:'Fishing',mods:['charm'],chain:'Hook streak',chainMax:20,
+  d:'Reel in consecutive hooks without leaving the spot. Each consecutive catch adds 2 rolls, up to 20 in a row.',
+  fn:(g,m,c)=>({rolls:1+CH(g,m)+2*Math.min(c,20)})},
+ {id:'safari',n:'Friend Safari',games:['xy'],enc:'Friend Safari',mods:['charm'],
+  d:'Friend Safari encounters roll 5 times at base odds.',
+  fn:(g,m)=>({rolls:5+CH(g,m)})},
+ {id:'horde',n:'Horde hunting',games:['xy','oras'],enc:'Horde',mods:['charm'],step:5,
+  d:'Each horde is five Pokémon, each checked separately. The counter adds 5 per horde by default.',
+  fn:(g,m)=>({rolls:1+CH(g,m)})},
+ {id:'dexnav',n:'DexNav chaining',games:['oras'],enc:'DexNav',mods:['charm'],chain:'DexNav chain',chainMax:100,
+  d:'Sneak up on DexNav targets. The 50th and 100th chain add 5 and 10 bonus rolls; search level adds a small extra chance not modeled here.',
+  fn:(g,m,c)=>({rolls:1+CH(g,m)+(c>0&&c%100===0?10:c>0&&c%50===0?5:0)})},
+ {id:'sos',n:'SOS chaining',games:['sm','usum'],enc:'SOS call',mods:['charm'],chain:'SOS chain',chainMax:31,
+  d:'Keep a wild Pokémon calling for help. Bonus rolls at chain 11, 21 and 31 (+4, +8, +12).',
+  fn:(g,m,c)=>({rolls:1+CH(g,m)+(c>=31?12:c>=21?8:c>=11?4:0)})},
+ {id:'combo',n:'Catch combo',games:['lgpe'],enc:'Overworld symbol',mods:['charm','lure'],chain:'Catch combo',chainMax:31,
+  d:'Catch the same species in a row. Bonus rolls at combo 11, 21 and 31 (+3, +7, +11); a Lure adds 1.',
+  fn:(g,m,c)=>({rolls:1+CH(g,m)+(m.lure?1:0)+(c>=31?11:c>=21?7:c>=11?3:0)})},
+ {id:'ko',n:'Number battled',games:['swsh'],enc:'Random wild (grass / cave)',mods:['charm'],chain:'Number battled',chainMax:500,
+  d:'Defeat or catch one species to raise its Pokédex battle count. Bonus rolls at 50, 100, 200, 300 and 500.',
+  fn:(g,m,c)=>({rolls:1+CH(g,m)+(c>=500?5:c>=300?4:c>=200?3:c>=100?2:c>=50?1:0)})},
+ {id:'dmax',n:'Dynamax Adventures',games:['swsh'],enc:'Dynamax Adventure',mods:['charm'],
+  d:'Crown Tundra adventures use flat odds: 1/300, or 1/100 with the Shiny Charm. Count one per adventure.',
+  fn:(g,m)=>({p:m.charm?1/100:1/300})},
+ {id:'hisui',n:'Outbreak & research',games:['pla'],enc:'Mass outbreak',mods:['charm','research','outbreak'],
+  d:'Every bonus is an extra roll: research Lv 10 (+1), perfect (+3 total), Shiny Charm (+3), mass outbreak (+25) or massive mass outbreak (+12).',
+  fn:(g,m)=>({rolls:1+(+m.research||0)+(m.charm?3:0)+(+m.outbreak||0)})},
+ {id:'svoutbreak',n:'Outbreak + sandwich',games:['sv'],enc:'Mass outbreak',mods:['charm','spark'],chain:'Outbreak KOs',chainMax:60,
+  d:'Clear 30 (+1) or 60 (+2) of an outbreak species, then add Sparkling Power from a sandwich (+1 to +3) and the Shiny Charm (+2).',
+  fn:(g,m,c)=>({rolls:1+CH(g,m)+(c>=60?2:c>=30?1:0)+(+m.spark||0)})},
+ {id:'zaspawn',n:'Respawn resetting',games:['za'],enc:'Wild Zone respawn',mods:['charm','donut'],
+  d:'Reset spawns by fast travel, bench or zone exit. The Shiny Charm adds 3 rolls; Mega Dimension Sparkling Power donuts add up to 3 more in Hyperspace. Fossils are not boosted by the Charm.',
+  fn:(g,m)=>({rolls:1+(m.charm?3:0)+(+m.donut||0)})}
+];
+const METHOD=Object.fromEntries(METHODS.map(m=>[m.id,m]));
+const methodsFor=gk=>METHODS.filter(m=>m.games==='*'||m.games.includes(gk));
+
+function oddsOf(gk,mid,mods,chain){
+  const g=GAMES[gk],m=METHOD[mid];if(!g||!m)return {p:null};
+  const r=m.fn(g,mods||{},chain||0);
+  if(r.target)return {target:true};
+  if(r.rolls){r.p=R(r.rolls,g.base)}
+  return r;
+}
+function huntOdds(h){
+  if(h.oddsOverride>0)return {p:1/h.oddsOverride,custom:true};
+  return oddsOf(h.game,h.method,h.mods,h.chain);
+}
+function bestFor(gk,m){
+  const mods={charm:true,research:3,outbreak:25,spark:3,donut:3,lure:true};
+  return oddsOf(gk,m.id,mods,m.chainMax||0);
+}
+
+/* ============ skins ============ */
+const FONTS={chakra:['"Chakra Petch", "Arial Narrow", system-ui, sans-serif',1],pixel:['"Press Start 2P", ui-monospace, monospace',.62],pixelify:['"Pixelify Sans", ui-monospace, monospace',1.05],cinzel:['Cinzel, "Times New Roman", serif',.95],unbounded:['Unbounded, "Arial Black", system-ui, sans-serif',.86]};
+// id, name, group, scheme, font, chrome, chromeInk, bg, panel, panel2, ink, muted, line, accent, onAccent, spark
+const SKIN_ROWS=[
+ ['dmg','Game Boy DMG','Handheld eras','light','pixel','#0f380f','#9bbc0f','#9bbc0f','#8bac0f','#a7c43a','#0f380f','#2a5229','#306230','#0f380f','#9bbc0f','#0f380f'],
+ ['pocket','Pocket Grey','Handheld eras','light','pixel','#2b2b26','#d8d8ca','#c8c8b8','#d8d8ca','#bcbcad','#1f1f1b','#45453e','#8e8e80','#2b2b26','#d8d8ca','#5a5a4f'],
+ ['red','Red Version','Versions','light','pixel','#c4161c','#ffffff','#f7efe8','#fffaf6','#f1e2d6','#2b0f0c','#6b4a42','#e3cfc2','#c4161c','#ffffff','#a87a06'],
+ ['blue','Blue Version','Versions','light','pixel','#1b47b8','#ffffff','#edf1fa','#fbfcff','#dfe6f6','#0c1a3d','#4b5a7c','#cdd6ea','#1b47b8','#ffffff','#a87a06'],
+ ['yellow','Yellow Version','Versions','light','pixel','#f5c400','#2a1f00','#fffae3','#fffdf3','#fbefb8','#2a1f00','#6d5a1d','#eadb9c','#b3261e','#ffffff','#b26f00'],
+ ['gold','Gold Version','Versions','dark','pixel','#2a2008','#f2c94c','#17130a','#221b0d','#2d2412','#f6ecd2','#b7a77e','#3e3219','#e3b23c','#1b1404','#ffd84a'],
+ ['silver','Silver Version','Versions','light','pixel','#59606b','#ffffff','#eceef1','#fafbfc','#dde1e7','#1c2128','#59606b','#cdd2da','#44607f','#ffffff','#9a7414'],
+ ['crystal','Crystal Version','Versions','light','pixel','#127fa3','#ffffff','#eaf6fa','#fbfeff','#d3ecf4','#08303e','#3f6573','#c2e0ea','#127fa3','#ffffff','#a3760f'],
+ ['ruby','Ruby','Versions','light','pixelify','#9e0f2a','#ffffff','#fbf1f2','#fffafa','#f3dde1','#2d0a12','#6e4650','#ebd0d6','#b3122f','#ffffff','#a87a06'],
+ ['sapphire','Sapphire','Versions','dark','pixelify','#0a1a3d','#8fb6ff','#08132b','#0f1d3c','#16284f','#e6eeff','#93a6cc','#22355e','#4a8dff','#04102a','#ffd54a'],
+ ['emerald','Emerald','Versions','dark','pixelify','#0b2a1d','#6ee7a8','#0a1c14','#10261c','#163326','#e3f6ec','#8fb7a2','#1f4232','#2fd189','#04150d','#ffd54a'],
+ ['diamond','Diamond','Versions','light','pixelify','#3a5fb8','#ffffff','#eef2fa','#fbfcff','#dfe6f5','#121c33','#4c5a78','#cfd8ea','#3a5fb8','#ffffff','#9a6f0c'],
+ ['pearl','Pearl','Versions','light','pixelify','#b0567f','#ffffff','#fbf2f6','#fffbfd','#f2dfe8','#2e1220','#6f4b5c','#ead2dd','#a8466f','#ffffff','#9a6f0c'],
+ ['platinum','Platinum','Versions','dark','pixelify','#22252c','#d9dee6','#14161b','#1c1f26','#252932','#e8ebf0','#9aa2b0','#30353f','#c9d1dd','#14161b','#e3b64c'],
+ ['black','Black','Versions','dark','unbounded','#000000','#ffffff','#0b0b0b','#151515','#1f1f1f','#f3f3f3','#a3a3a3','#2c2c2c','#f3f3f3','#0b0b0b','#5cc8ff'],
+ ['white','White','Versions','light','unbounded','#ffffff','#111111','#f4f4f4','#ffffff','#ebebeb','#111111','#5c5c5c','#dadada','#111111','#ffffff','#9a6a00'],
+ ['x','X','Versions','dark','unbounded','#0b1a3f','#9cc3ff','#070e22','#0e1834','#142146','#e6eeff','#8fa2c9','#1f2e57','#3d8bff','#04102a','#ffd54a'],
+ ['y','Y','Versions','light','unbounded','#d81f36','#ffffff','#fff3f4','#fffafa','#f8dde1','#2d0a10','#704852','#efd0d6','#c81a30','#ffffff','#9a6f0c'],
+ ['sun','Sun','Versions','light','unbounded','#f08a2c','#2a1300','#fff5ea','#fffcf7','#fbe4cc','#2a1300','#6e4d33','#f0d6bb','#b6520b','#ffffff','#a3760f'],
+ ['moon','Moon','Versions','dark','unbounded','#1a1336','#c4b2ff','#0f0c20','#17132e','#201a3d','#ece8ff','#a39bc7','#2d2650','#9b7bff','#0f0c20','#ffd54a'],
+ ['sword','Sword','Versions','light','unbounded','#0778a8','#ffffff','#edf6fb','#fbfeff','#d8ecf6','#08263a','#436679','#c5e0ee','#0778a8','#ffffff','#9a6f0c'],
+ ['shield','Shield','Versions','light','unbounded','#b1005a','#ffffff','#fcf0f5','#fffafc','#f4d8e5','#2e0a1b','#714a5c','#ecd0dc','#b1005a','#ffffff','#9a6f0c'],
+ ['scarlet','Scarlet','Versions','light','unbounded','#d8432a','#ffffff','#fff3ee','#fffaf7','#f8dfd3','#2c0f07','#704f43','#efd2c6','#c23a22','#ffffff','#9a6f0c'],
+ ['violet','Violet','Versions','dark','unbounded','#2a1543','#d4a8ff','#130b1f','#1c1230','#261940','#f1e9ff','#a996c8','#33244f','#b06cff','#130b1f','#ffd54a'],
+ ['hisui','Hisui Survey','Regions & legends','light','cinzel','#3b2c1c','#efe2c4','#efe6d2','#f8f2e3','#e5d8bc','#2b2216','#665640','#d3c3a2','#8a3f1c','#ffffff','#8f6200'],
+ ['lumiose','Lumiose Night','Regions & legends','dark','unbounded','#0f1a17','#c6f24e','#0a1210','#111c19','#172622','#e6f2ee','#8fa8a0','#20322d','#c6f24e','#0a1210','#ffd54a'],
+ ['dex','Pokédex','Gear','light','chakra','#c8102e','#ffffff','#f3efe9','#fffdfa','#ebe4da','#1c1a18','#5f5a53','#ddd5c9','#c8102e','#ffffff','#9a6f0c'],
+ ['pokeball','Poké Ball','Gear','light','chakra','#1c1c1c','#ffffff','#f6f6f6','#ffffff','#eaeaea','#161616','#5a5a5a','#dcdcdc','#e3350d','#ffffff','#9a6f0c'],
+ ['great','Great Ball','Gear','light','chakra','#2457c5','#ffffff','#f0f4fb','#ffffff','#e0e8f6','#111a2e','#4e5a73','#d2dbec','#d42a2f','#ffffff','#9a6f0c'],
+ ['ultra','Ultra Ball','Gear','dark','chakra','#141414','#ffd23f','#111111','#1b1b1b','#242424','#f2f2f2','#a5a5a5','#303030','#ffd23f','#111111','#ffd23f'],
+ ['master','Master Ball','Gear','dark','chakra','#4a1d7a','#ffd9f4','#140b20','#1e1230','#291942','#f4ecff','#ad9ccc','#36245a','#e04cb8','#1a0626','#ffd54a'],
+ ['premier','Premier Ball','Gear','light','chakra','#faf8f5','#b3101f','#f2efea','#ffffff','#e9e4dc','#1d1a17','#5f5850','#dcd5ca','#b3101f','#ffffff','#9a6f0c'],
+ ['pikachu','Pikachu','Pokémon palettes','light','chakra','#f6cf1d','#2b2000','#fffbe8','#fffdf5','#f9eebc','#2b2000','#6b5a1c','#ecdea0','#c73a2b','#ffffff','#a86c00'],
+ ['charizard','Charizard','Pokémon palettes','dark','chakra','#2a1409','#ff9a4a','#170e09','#22150d','#2d1c12','#fbeee4','#c2a08a','#3d2819','#ff7a2f','#170e09','#3fc1c9'],
+ ['blastoise','Blastoise','Pokémon palettes','light','chakra','#2f6fb8','#ffffff','#eef5fb','#fbfdff','#dce9f5','#0f2238','#4a5f77','#cbdcec','#8a5a2b','#ffffff','#9a6f0c'],
+ ['venusaur','Venusaur','Pokémon palettes','light','chakra','#2f8f7a','#ffffff','#eef8f3','#fbfffd','#d9efe5','#0f2a22','#47665c','#c6e3d6','#2b8a55','#ffffff','#c43c5e'],
+ ['gengar','Gengar','Pokémon palettes','dark','chakra','#2a1a45','#c9a6ff','#120c1d','#1b132b','#241a3a','#efe8ff','#a597c4','#322548','#a57bff','#120c1d','#ff5c7a'],
+ ['mewtwo','Mewtwo','Pokémon palettes','light','chakra','#8b6bb8','#ffffff','#f6f2fb','#fffdff','#e9e0f5','#22163a','#5f5279','#ddd2ec','#7240ad','#ffffff','#9a6f0c'],
+ ['redgyarados','Red Gyarados','Pokémon palettes','dark','chakra','#5a0a0e','#ffd3d3','#170809','#220c0e','#2e1114','#fbe9e9','#c39a9c','#3f171b','#ef3b44','#170809','#f6d365']
+];
+const SKINS=SKIN_ROWS.map(r=>({id:r[0],n:r[1],group:r[2],scheme:r[3],font:r[4],t:{chrome:r[5],'chrome-ink':r[6],bg:r[7],panel:r[8],panel2:r[9],ink:r[10],muted:r[11],line:r[12],accent:r[13],'on-accent':r[14],spark:r[15]}}));
+const SKIN=Object.fromEntries(SKINS.map(s=>[s.id,s]));
+const SEM={light:{good:'#1f8a4c',warn:'#a86400',bad:'#c0392b'},dark:{good:'#4fd08a',warn:'#ffb347',bad:'#ff6b5e'}};
+
+/* ============ state & storage ============ */
+const LS_HUNTS='shinyledger.hunts.v1', LS_SKIN='shinyledger.skin', LS_UI='shinyledger.ui';
+const S={sheet:false,focus:false,hunts:new Map(),sel:null,filter:'active',examples:false,tab:'hunts',skin:'system',mode:'local'};
+
+function exampleHunts(){
+  const now=Date.now(),d=86400000;
+  return [
+   {id:'ex1',example:true,target:'Ralts',game:'sv',method:'svoutbreak',enc:'Mass outbreak',mods:{charm:true,spark:3},chain:60,count:318,step:1,linkChain:false,status:'active',phases:[{at:142,species:'Kirlia',date:now-d}],started:now-3*d,timeMs:5420000,runningSince:null,notes:'Example hunt. Level 3 Sparkling Power sandwich, outbreak cleared to 60.',oddsOverride:0},
+   {id:'ex2',example:true,target:'Entei',game:'hgss',method:'rng',enc:'Roaming',mods:{},chain:0,count:14,step:1,status:'active',phases:[],started:now-d,timeMs:2100000,runningSince:null,notes:'Example. Target delay 612, second 42. Verify with Elm\'s calls.',oddsOverride:0},
+   {id:'ex3',example:true,target:'Gible',game:'bdsp',method:'radar',enc:'Poké Radar patch',mods:{},chain:40,count:96,step:1,linkChain:true,status:'complete',phases:[],started:now-6*d,completed:now-5*d,timeMs:3300000,runningSince:null,notes:'Example of a finished hunt.',oddsOverride:0}
+  ];
+}
+
+function loadLocal(){const a=lsGet(LS_HUNTS);return Array.isArray(a)?a:[]}
+function persistLocal(){lsSet(LS_HUNTS,[...S.hunts.values()].filter(h=>!h.example))}
+function realHunts(){return [...S.hunts.values()].filter(h=>!h.example)}
+function plain(h){return JSON.parse(JSON.stringify(h))}
+
+/* ============ cloud sync (Supabase) — offline-first ============
+   Every change is written to this device first, queued in an outbox,
+   and pushed to Supabase when signed in and online. Deletes are soft
+   (deleted=true) so other devices learn about them. Last write wins,
+   compared by each hunt's own `updated` timestamp. */
+const CFG=window.SHINY_CONFIG||{};
+const sb=(CFG.supabaseUrl&&CFG.supabaseAnonKey&&window.supabase)?window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'shinyledger.auth'}}):null;
+const LS_OUT='shinyledger.outbox', LS_TOMB='shinyledger.tombs', LS_OWNER='shinyledger.owner';
+
+const Store={
+  mode:'local',user:null,channel:null,timer:null,busy:false,again:false,status:'local',
+  outbox:new Set(lsGet(LS_OUT)||[]),
+  tombs:new Set(lsGet(LS_TOMB)||[]),
+  saveOut(){lsSet(LS_OUT,[...this.outbox]);lsSet(LS_TOMB,[...this.tombs])},
+  setStatus(st){this.status=st;renderSync()},
+  async connect(){
+    if(!sb){this.setStatus('local');return}
+    this.setStatus('signedout');
+    try{const {data}=await sb.auth.getSession();await this.onSession(data.session)}catch(e){this.setStatus('error')}
+    sb.auth.onAuthStateChange((_ev,session)=>{setTimeout(()=>this.onSession(session),0)});
+    window.addEventListener('online',()=>{if(this.user){this.flush();this.pull()}});
+    window.addEventListener('offline',()=>{if(this.user)this.setStatus('offline')});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&this.user){this.flush();this.pull()}});
+  },
+  async onSession(session){
+    const u=session&&session.user||null;
+    if((u&&u.id)===(this.user&&this.user.id))return;
+    if(this.channel){try{sb.removeChannel(this.channel)}catch(e){}this.channel=null}
+    this.user=u;
+    if(!u){this.mode='local';S.mode='local';this.setStatus('signedout');renderHunts();return}
+    this.mode='cloud';S.mode='cloud';
+    const prev=lsGet(LS_OWNER);
+    if(prev&&prev!==u.id){
+      // A different account used this device before: its hunts already live in its cloud. Start clean.
+      S.hunts=new Map();this.outbox.clear();this.tombs.clear();persistLocal();
+    }else if(prev!==u.id){
+      // Guest hunts on this device: upload them to the new account.
+      realHunts().forEach(h=>this.outbox.add(h.id));
+    }
+    lsSet(LS_OWNER,u.id);this.saveOut();
+    await this.flush();await this.pull();this.subscribe();this.loadProfile();renderHunts();
+  },
+  async pull(){
+    if(!this.user)return;
+    if(!navigator.onLine){this.setStatus('offline');return}
+    const {data,error}=await sb.from('hunts').select('id,data,deleted');
+    if(error){this.setStatus('error');return}
+    const local=new Map(realHunts().map(h=>[h.id,h]));
+    const next=new Map();
+    for(const row of data){
+      const loc=local.get(row.id),dirty=this.outbox.has(row.id);
+      if(row.deleted){if(dirty&&loc&&!this.tombs.has(row.id))next.set(row.id,loc);continue}
+      if(this.tombs.has(row.id))continue;
+      const remote=row.data||{};
+      next.set(row.id,(loc&&dirty&&(loc.updated||0)>=(remote.updated||0))?loc:remote);
+    }
+    for(const [id,h] of local){if(!next.has(id)&&this.outbox.has(id)&&!this.tombs.has(id))next.set(id,h)}
+    setHunts(next);
+    this.setStatus(this.outbox.size?'saving':'synced');
+  },
+  subscribe(){
+    if(!this.user)return;
+    this.channel=sb.channel('hunts-'+this.user.id)
+      .on('postgres_changes',{event:'*',schema:'public',table:'hunts',filter:'user_id=eq.'+this.user.id},p=>this.onRemote(p.new))
+      .subscribe();
+  },
+  onRemote(row){
+    if(!row||!row.id)return;
+    const loc=S.hunts.get(row.id),dirty=this.outbox.has(row.id);
+    if(row.deleted){if(dirty)return;if(loc){S.hunts.delete(row.id);if(S.sel===row.id)S.sel=pickDefault();afterRemote()}return}
+    const r=row.data||{};
+    if(loc&&(loc.updated||0)>=(r.updated||0))return; // our own echo or older
+    if(dirty)return;
+    if(S.examples)clearExamples();
+    S.hunts.set(row.id,r);if(!S.sel)S.sel=row.id;afterRemote();
+  },
+  save(h,now){
+    if(!h||h.example)return;
+    h.updated=Date.now();
+    this.outbox.add(h.id);this.saveOut();persistLocal();
+    if(!this.user)return;
+    this.setStatus(navigator.onLine?'saving':'offline');
+    clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush(),now?0:700);
+  },
+  remove(id){
+    this.tombs.add(id);this.outbox.add(id);this.saveOut();persistLocal();
+    if(this.user){clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush(),0)}
+  },
+  async flush(){
+    if(!this.user||!this.outbox.size)return;
+    if(!navigator.onLine){this.setStatus('offline');return}
+    if(this.busy){this.again=true;return}
+    this.busy=true;this.setStatus('saving');
+    const ids=[...this.outbox],sent={};
+    const rows=ids.map(id=>{
+      if(this.tombs.has(id))return {id,user_id:this.user.id,data:{},deleted:true,updated_at:new Date().toISOString()};
+      const h=S.hunts.get(id);if(!h||h.example)return null;
+      sent[id]=h.updated||0;
+      return {id,user_id:this.user.id,data:plain(h),deleted:false,updated_at:new Date(h.updated||Date.now()).toISOString()};
+    }).filter(Boolean);
+    let ok=true;
+    if(rows.length){const {error}=await sb.from('hunts').upsert(rows,{onConflict:'id'});if(error)ok=false}
+    if(ok){
+      ids.forEach(id=>{const h=S.hunts.get(id);if(this.tombs.has(id)||!h||(h.updated||0)===sent[id]){this.outbox.delete(id);this.tombs.delete(id)}});
+      this.saveOut();
+    }
+    this.busy=false;this.again=false;
+    if(!ok){this.setStatus('error');return}
+    if(this.outbox.size){setTimeout(()=>this.flush(),300);return}
+    this.setStatus('synced');
+  },
+  async loadProfile(){
+    try{const {data}=await sb.from('profiles').select('skin').eq('user_id',this.user.id).maybeSingle();
+      if(data&&data.skin&&data.skin!==S.skin)applySkin(data.skin,false)}catch(e){}
+  },
+  saveSkin(id){
+    lsSet(LS_SKIN,id);
+    if(this.user&&navigator.onLine)sb.from('profiles').upsert({user_id:this.user.id,skin:id,updated_at:new Date().toISOString()}).then(()=>{},()=>{});
+  },
+  async signOut(){try{await this.flush();await sb.auth.signOut()}catch(e){}}
+};
+function setHunts(next){
+  if(next.size===0){exampleHunts().forEach(h=>next.set(h.id,h));S.examples=true}else S.examples=false;
+  S.hunts=next;persistLocal();
+  if(!S.hunts.has(S.sel))S.sel=pickDefault();
+  afterRemote();
+}
+function afterRemote(){
+  persistLocal();
+  const a=document.activeElement;
+  if(a&&(a.id==='notesIn'||a.id==='phaseIn'||a.id==='setCount')&&!$('#modalRoot').firstChild){renderSync();return}
+  renderHunts();if(S.focus)renderFocus();
+}
+
+function pickDefault(){const a=sortedHunts('active');return a.length?a[0].id:(S.hunts.size?[...S.hunts.keys()][0]:null)}
+function clearExamples(){for(const [id,h] of S.hunts)if(h.example)S.hunts.delete(id);S.examples=false}
+
+/* ============ skins apply ============ */
+function lum(h){const c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255).map(v=>v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4));return .2126*c[0]+.7152*c[1]+.0722*c[2]}
+function contrast(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)}
+const SKIN_ALIAS={electric:'pikachu',firelizard:'charizard',seaturtle:'blastoise',seedtoad:'venusaur',ghost:'gengar',psychic:'mewtwo',rage:'redgyarados'};
+function applySkin(id,save=true){
+  id=SKIN_ALIAS[id]||id;S.skin=id;const b=document.body;
+  const props=['star','chrome','chrome-ink','bg','panel','panel2','ink','muted','line','accent','on-accent','spark','good','warn','bad','font-display','dscale'];
+  props.forEach(p=>b.style.removeProperty('--'+p));b.style.removeProperty('color-scheme');
+  const sk=SKIN[id];
+  if(sk){
+    Object.entries(sk.t).forEach(([k,v])=>b.style.setProperty('--'+k,v));
+    Object.entries(SEM[sk.scheme]).forEach(([k,v])=>b.style.setProperty('--'+k,v));
+    b.style.setProperty('--font-display',FONTS[sk.font][0]);b.style.setProperty('--dscale',FONTS[sk.font][1]);
+    b.style.setProperty('color-scheme',sk.scheme);
+    {const m=document.querySelector('meta[name=theme-color]');if(m)m.content=sk.t.chrome}
+    b.style.setProperty('--star',contrast(sk.t.spark,sk.t.chrome)<2.5?sk.t['chrome-ink']:sk.t.spark);
+  }else{S.skin='system';const m=document.querySelector('meta[name=theme-color]');if(m)m.content=window.matchMedia('(prefers-color-scheme: dark)').matches?'#0a0b0e':'#16181d'}
+  $('#skinSel').value=S.skin;
+  $$('.sw').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.skin===S.skin)));
+  if(save)Store.saveSkin(S.skin);
+}
+
+/* ============ tabs ============ */
+function setTab(t){
+  S.tab=t;$$('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  ['hunts','odds','rng','guide','themes'].forEach(k=>$('#tab-'+k).hidden=k!==t);
+  const ui=lsGet(LS_UI)||{};ui.tab=t;lsSet(LS_UI,ui);
+}
+$$('[data-tab]').forEach(b=>b.addEventListener('click',()=>{setTab(b.dataset.tab);if(window.matchMedia('(max-width:720px)').matches)window.scrollTo(0,0)}));
+
+/* ============ HUNTS ============ */
+function sortedHunts(f){
+  const all=[...S.hunts.values()];
+  const by=f==='active'?all.filter(h=>h.status==='active'||h.status==='paused'):f==='done'?all.filter(h=>h.status==='complete'||h.status==='failed'):all;
+  return by.sort((a,b)=>(b.updated||b.started||0)-(a.updated||a.started||0));
+}
+function huntTime(h){return (h.timeMs||0)+(h.runningSince?Date.now()-h.runningSince:0)}
+
+function renderHunts(){
+  const el=$('#tab-hunts');
+  const hs=[...S.hunts.values()];
+  const found=hs.filter(h=>h.status==='complete');
+  const totalEnc=hs.reduce((a,h)=>a+(h.count||0),0);
+  const totalT=hs.reduce((a,h)=>a+huntTime(h),0);
+  const ratios=found.map(h=>{const o=huntOdds(h);return o.p?h.count*o.p:null}).filter(x=>x!=null);
+  const avgRatio=ratios.length?ratios.reduce((a,b)=>a+b,0)/ratios.length:null;
+  const list=sortedHunts(S.filter);
+  el.innerHTML=`
+   ${S.examples?`<div class="banner"><span><b>These are example hunts.</b> Counters work so you can try things; nothing is saved until you start your own.</span><button class="btn primary" data-act="new">Start a hunt</button></div>`:''}
+   <div class="mswitch only-m">
+     <button class="btn" data-act="sheet" aria-haspopup="dialog"><span>${esc(cur()?cur().target:'Choose a hunt')}</span><span class="mono muted">${S.hunts.size} ▾</span></button>
+     <button class="btn primary" data-act="new" style="flex:0 0 auto" aria-label="New hunt">+ New</button>
+   </div>
+   <div class="stats">
+     <div class="stat"><div class="eyebrow">Shinies found</div><div class="v spark">${found.length}</div></div>
+     <div class="stat"><div class="eyebrow">Active hunts</div><div class="v">${hs.filter(h=>h.status==='active').length}</div></div>
+     <div class="stat"><div class="eyebrow">Total encounters</div><div class="v">${num(totalEnc)}</div></div>
+     <div class="stat"><div class="eyebrow">Time hunting</div><div class="v">${fmtTime(totalT)}</div></div>
+     <div class="stat"><div class="eyebrow">Avg. find vs odds</div><div class="v">${avgRatio==null?'—':avgRatio.toFixed(2)+'×'}</div></div>
+   </div>
+   <div class="hunts">
+     <div class="sheet-scrim" data-act="sheetclose" ${S.sheet?'':'hidden'}></div>
+     <aside class="rail ${S.sheet?'open':''}" aria-label="Your hunts">
+       <span class="grab only-m"></span>
+       <button class="btn primary" data-act="new">+ New hunt</button>
+       <div class="seg" role="group" aria-label="Filter hunts">
+         ${[['active','In progress'],['done','Finished'],['all','All']].map(([k,l])=>`<button data-filter="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}
+       </div>
+       <div class="hlist">${list.length?list.map(h=>{const g=GAMES[h.game];const m=METHOD[h.method];return `
+         <button class="hitem" data-sel="${h.id}" aria-current="${S.sel===h.id}">
+           <span class="dot st-${h.status}"></span>
+           <span style="min-width:0"><span class="t">${esc(h.target||'Untitled')}</span><span class="s">${esc(g?g.s:'?')} · ${esc(m?m.n:'?')}</span></span>
+           <span class="c">${num(h.count)}</span>
+         </button>`}).join(''):`<p class="muted" style="padding:8px 4px;margin:0">No hunts here yet.</p>`}</div>
+       <p class="note only-d">Keyboard: <span class="kbd">Space</span> or <span class="kbd">+</span> adds an encounter to the open hunt, <span class="kbd">−</span> removes one.</p>
+       <p class="note">${Store.user?'Hunts sync to your account and follow you to other devices.':sb?'Hunts are saved on this device. Sign in to sync them.':'Hunts are saved on this device.'}</p>
+     </aside>
+     <div class="detail" id="detail">${renderDetail()}</div>
+   </div>`;
+}
+
+function renderDetail(){
+  const h=S.hunts.get(S.sel);
+  if(!h)return `<div class="panel empty"><h2>No hunt open</h2><p class="muted" style="margin:0;max-width:44ch">Pick a hunt on the left or start a new one. Choose the game and method and the odds are worked out for you.</p><button class="btn primary" data-act="new">Start a hunt</button></div>`;
+  const g=GAMES[h.game],m=METHOD[h.method],o=huntOdds(h);
+  const done=h.status==='complete';
+  const p=o.p, c=h.count||0, cp=o.target?0:cum(p,c);
+  const live=o.target||!p?'':`<div class="live" aria-live="polite">
+       <div class="livepct" id="livePct">${pct(cp)}</div>
+       <div class="note" style="margin:0">of hunters at ${fmtDen(p)} would have found a shiny by encounter ${num(c)}${done?'':cp<.5?'. You are still ahead of the median.':cp<.9?'. Past the median: most hunters would have it by now.':'. Deep past odds, keep going.'}</div>
+       <div class="bar"><i style="width:${(cp*100).toFixed(2)}%;background:var(--spark)"></i></div>
+     </div>`;
+  let oddsPanel;
+  if(o.target){
+    oddsPanel=`<div class="eyebrow">RNG attempt log</div>
+      <div class="oddsbig">${num(c)} attempt${c===1?'':'s'}</div>
+      <p class="note" style="margin:0">RNG hunts hit a planned target, so random odds do not apply. Log each attempt and use the RNG Lab timer and calculators to calibrate.</p>
+      <dl class="kv"><dt>Generation</dt><dd>Gen ${g.gen}</dd><dt>Shiny check</dt><dd>${g.gen===2?'DVs':g.gen<=5?'xor &lt; 8':'xor &lt; 16'}</dd></dl>
+      <button class="btn" data-act="gotoRng">Open RNG Lab</button>`;
+  }else{
+    const c50=needFor(p,.5),c90=needFor(p,.9),c99=needFor(p,.99);
+    oddsPanel=`<div class="eyebrow">Current odds per encounter</div>
+      <div class="oddsbig">${fmtDen(p)}${o.rolls?` <span class="muted" style="font-size:.9rem">${o.rolls} roll${o.rolls>1?'s':''}</span>`:''}${o.custom?` <span class="muted" style="font-size:.9rem">custom</span>`:''}${o.note?` <span class="muted" style="font-size:.9rem">${o.note}</span>`:''}</div>
+      ${trackSVG(p,c)}
+      <dl class="kv">
+        <dt>Encounters vs. odds</dt><dd>${(c*p).toFixed(2)}×</dd>
+        <dt>50% / 90% / 99% by</dt><dd>${num(c50)} / ${num(c90)} / ${num(c99)}</dd>
+      </dl>
+      <p class="note" style="margin:0">${done?`Found after ${num(c)} encounters. ${pct(cp)} of hunters at these odds would have found one by then.`:c>0?(cp<.5?`You're under the median. Half of hunters would still be going.`:`${pct(1-cp)} of hunters at these odds would still be looking at this count.`):`Each encounter is an independent roll; the odds never "build up".`}</p>`;
+  }
+  const chainBox=m&&m.chain?`<div class="chainbox">
+      <span class="eyebrow" style="margin-right:auto">${esc(m.chain)}</span>
+      <button class="btn" data-act="chain" data-n="-1" aria-label="Lower chain">−</button>
+      <span class="cv">${h.chain||0}</span>
+      <button class="btn" data-act="chain" data-n="1" aria-label="Raise chain">+</button>
+      <button class="btn ghost danger" data-act="chainbreak">Chain broke</button>
+      <label class="check" style="flex-basis:100%"><input type="checkbox" id="linkChain" ${h.linkChain?'checked':''}> Each encounter also adds to the chain</label>
+    </div>`:'';
+  const step=h.step||1;
+  const ph=h.phases||[];
+  return `
+   <div class="dhead">
+     <div>
+       <div class="row" style="gap:8px"><span class="pill ${h.status}">${{active:'Hunting',paused:'Paused',complete:'Shiny found',failed:'Failed'}[h.status]||h.status}</span>${h.example?'<span class="pill">Example</span>':''}</div>
+       <h2 style="margin-top:8px">${esc(h.target||'Untitled')}</h2>
+       <div class="meta">${h.species?dexNo(h.species)+' · ':''}${esc(g?g.n:'?')} · ${esc(m?m.n:'?')} · ${esc(h.enc||'')}${h.mods&&h.mods.charm&&g.charm?' · Shiny Charm':''}</div>
+     </div>
+     <div class="row">
+       ${h.status==='active'?`<button class="btn" data-act="status" data-v="paused">Pause</button>`:''}
+       ${h.status==='paused'||h.status==='failed'?`<button class="btn" data-act="status" data-v="active">Resume</button>`:''}
+       ${done?`<button class="btn" data-act="status" data-v="active">Reopen</button>`:`<button class="btn ghost" data-act="status" data-v="failed">Mark failed</button>`}
+       <button class="btn" data-act="edit">Edit</button>
+       <button class="btn ghost danger" data-act="del">Delete</button>
+     </div>
+   </div>
+   <div class="panel counter ${done?'found':''}" id="counterPanel">
+     <div class="cmain">
+       <div class="eyebrow">${o.target?'Attempts':'Encounters'}${step>1?` · +${step} per tap`:''}</div>
+       <div class="count" id="countEl">${num(c)}</div>
+       ${live}
+       <div class="cbtns">
+         <button class="btn primary big tapbtn" data-act="bump" data-n="${step}" ${done?'disabled':''}>+${step}</button>
+         ${step>1?`<button class="btn" data-act="bump" data-n="1" ${done?'disabled':''}>+1</button>`:''}
+         <button class="btn tapbtn" data-act="bump" data-n="-1" ${done?'disabled':''} aria-label="Remove one">−1</button>
+         <button class="btn" data-act="focus" ${done?'disabled':''}>Focus mode</button>
+         <span class="row" style="gap:6px"><input class="inp" id="setCount" type="number" min="0" inputmode="numeric" placeholder="Set count" style="width:120px"><button class="btn" data-act="setcount">Set</button></span>
+       </div>
+       ${chainBox}
+       ${done?`<div class="eyebrow" style="color:var(--spark)">Found ${h.completed?new Date(h.completed).toLocaleDateString():''}</div>`:`<button class="btn" data-act="found" style="justify-self:start;border-color:var(--spark);color:var(--ink)">★ Shiny found</button>`}
+     </div>
+     <div class="codds">${oddsPanel}</div>
+   </div>
+   ${done?'':`<div class="mbar">
+     <button class="btn" data-act="bump" data-n="-1" aria-label="Remove one">−1</button>
+     <button class="btn primary plus" data-act="bump" data-n="${step}">+${step} <small>${num(c)}</small></button>
+     <button class="btn" data-act="focus" aria-label="Focus mode">⤢</button>
+   </div>`}
+   <div class="cards3">
+     <div class="panel pad" style="display:grid;gap:10px;align-content:start">
+       <div class="eyebrow">Hunt timer</div>
+       <div class="timer" id="timerEl">${fmtTime(huntTime(h))}</div>
+       <div class="row"><button class="btn ${h.runningSince?'':'primary'}" data-act="timer">${h.runningSince?'Pause timer':'Start timer'}</button></div>
+       <label class="check"><input type="checkbox" id="wakeChk" ${Wake.want?'checked':''}> Keep screen on</label>
+       <dl class="kv"><dt>Encounters / hour</dt><dd>${huntTime(h)>60000?Math.round(c/(huntTime(h)/3600000)).toLocaleString():'—'}</dd><dt>Started</dt><dd>${h.started?new Date(h.started).toLocaleDateString():'—'}</dd></dl>
+     </div>
+     <div class="panel pad" style="display:grid;gap:10px;align-content:start">
+       <div class="eyebrow">Phases (${ph.length})</div>
+       <p class="note" style="margin:0">A phase is a shiny that isn't your target. It's logged at the current count.</p>
+       <div class="row" style="flex-wrap:nowrap"><input class="inp" id="phaseIn" placeholder="Species found"><button class="btn" data-act="phase">Log</button></div>
+       ${ph.length?`<ul class="phases">${ph.map((x,i)=>`<li><span>${esc(x.species||'Unknown')}</span><span class="mono muted">#${num(x.at)} <button class="btn ghost" style="padding:0 6px" data-act="unphase" data-i="${i}" aria-label="Remove phase">×</button></span></li>`).join('')}</ul>`:''}
+     </div>
+     <div class="panel pad" style="display:grid;gap:8px;align-content:start">
+       <label class="f" for="notesIn">Notes</label>
+       <textarea id="notesIn" class="inp" rows="6" placeholder="Seed, target frame, route, nature you want…">${esc(h.notes||'')}</textarea>
+     </div>
+   </div>`;
+}
+
+function trackSVG(p,c){
+  const W=600,H=96,L=6,Rr=6,T=8,B=22;
+  const c99=needFor(p,.99);
+  const maxX=Math.max(c99,Math.ceil(c*1.08),10);
+  const x=n=>L+(W-L-Rr)*n/maxX, y=q=>T+(H-T-B)*(1-q);
+  let d='';const steps=80;
+  for(let i=0;i<=steps;i++){const n=maxX*i/steps;d+=(i?'L':'M')+x(n).toFixed(1)+' '+y(cum(p,n)).toFixed(1)}
+  const area=d+`L${x(maxX)} ${y(0)}L${x(0)} ${y(0)}Z`;
+  const refs=[.5,.9].map(q=>{const n=needFor(p,q);return `<line class="ref" x1="${x(n)}" x2="${x(n)}" y1="${T}" y2="${H-B}"/><text x="${x(n)+3}" y="${T+10}">${q*100}%</text>`}).join('');
+  const nx=x(Math.min(c,maxX)),ny=y(cum(p,c));
+  return `<svg class="track" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative chance curve; you are at ${pct(cum(p,c))}">
+   <line class="grid" x1="${L}" x2="${W-Rr}" y1="${y(0)}" y2="${y(0)}"/>
+   <path class="area" d="${area}"/><path class="curve" d="${d}"/>${refs}
+   <line class="now" x1="${nx}" x2="${nx}" y1="${T}" y2="${H-B}"/><circle class="nowdot" cx="${nx}" cy="${ny}" r="5"/>
+   <text x="${L}" y="${H-6}">0</text><text x="${W-Rr}" y="${H-6}" text-anchor="end">${num(maxX)} enc.</text>
+  </svg>`;
+}
+
+function cur(){return S.hunts.get(S.sel)}
+/* ---- phone helpers: wake lock, haptics, focus mode ---- */
+const Wake={lock:null,want:false,auto:0,
+  async on(){try{if('wakeLock' in navigator&&document.visibilityState==='visible'&&!this.lock){this.lock=await navigator.wakeLock.request('screen');this.lock.addEventListener('release',()=>{this.lock=null})}}catch(e){this.lock=null}return !!this.lock},
+  off(){try{this.lock&&this.lock.release()}catch(e){}this.lock=null},
+  sync(){(this.want||this.auto>0)?this.on():this.off()}
+};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')Wake.sync()});
+document.addEventListener('change',async e=>{if(e.target.id==='wakeChk'){Wake.want=e.target.checked;const ui=lsGet(LS_UI)||{};ui.wake=Wake.want;lsSet(LS_UI,ui);if(Wake.want){const ok=await Wake.on();if(!ok)toast('This browser did not allow keeping the screen on.')}else Wake.sync()}});
+function buzz(ms){try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}}
+function openFocus(){if(!cur())return;S.focus=true;Wake.auto++;Wake.sync();renderFocus()}
+function closeFocus(){if(!S.focus)return;S.focus=false;Wake.auto=Math.max(0,Wake.auto-1);Wake.sync();$('#focusRoot').innerHTML='';renderHunts()}
+function renderFocus(){
+  const root=$('#focusRoot');const h=cur();
+  if(!S.focus||!h){root.innerHTML='';return}
+  const g=GAMES[h.game],m=METHOD[h.method],o=huntOdds(h),c=h.count||0,step=h.step||1,done=h.status==='complete';
+  const cp=o.p?cum(o.p,c):0;
+  root.innerHTML=`<div class="focus" role="dialog" aria-modal="true" aria-label="Focus mode">
+    <div class="ftop"><div class="t"><b>${esc(h.target)}</b><span class="muted" style="font-size:.85rem">${esc(g?g.s:'')} · ${esc(m?m.n:'')} · ${o.target?'RNG attempts':fmtDen(o.p)}</span></div>
+      <button class="btn" data-act="focusclose">Done</button></div>
+    <button class="tap" data-act="bump" data-n="${step}" ${done?'disabled':''} aria-label="Add ${step}">
+      <span class="fcount" id="fcount">${num(c)}</span>
+      ${o.p&&!o.target?`<span class="fpct">${pct(cp)}</span><span class="hint">of hunters would have found it by now</span>`:''}
+      <span class="hint">${done?'Shiny found':`Tap anywhere to add ${step}`}</span>
+    </button>
+    <div class="fbot">
+      ${m&&m.chain?`<div class="fchain"><span class="eyebrow">${esc(m.chain)}</span><button class="btn" style="flex:0 0 auto" data-act="chain" data-n="-1" aria-label="Lower chain">−</button><b class="mono" style="font-size:1.2rem">${h.chain||0}</b><button class="btn" style="flex:0 0 auto" data-act="chain" data-n="1" aria-label="Raise chain">+</button><button class="btn ghost danger" style="flex:0 0 auto" data-act="chainbreak">Chain broke</button></div>`:''}
+      <button class="btn" data-act="bump" data-n="-1" ${done?'disabled':''}>−1</button>
+      <button class="btn" data-act="timer">${h.runningSince?'Pause timer':'Start timer'}</button>
+      ${done?'':`<button class="btn" data-act="found" style="border-color:var(--spark)">★ Found</button>`}
+    </div></div>`;
+}
+function touch(h,full=true){Store.save(h);if(full){renderHunts();if(S.focus)renderFocus()}}
+function bump(n){
+  const h=cur();if(!h||h.status==='complete')return;
+  h.count=Math.max(0,(h.count||0)+n);
+  const m=METHOD[h.method];
+  if(m&&m.chain&&h.linkChain)h.chain=Math.max(0,(h.chain||0)+(n>0?1:-1));
+  if(h.status==='paused'&&n>0)h.status='active';
+  buzz(n>0?12:[8,40,8]);
+  touch(h);
+  const ce=$('#countEl');if(ce){ce.classList.remove('bump');void ce.offsetWidth;ce.classList.add('bump')}
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act],[data-sel],[data-filter]');if(!t)return;
+  if(t.dataset.sel){S.sel=t.dataset.sel;S.sheet=false;renderHunts();return}
+  if(t.dataset.filter){S.filter=t.dataset.filter;renderHunts();return}
+  const a=t.dataset.act,h=cur();
+  switch(a){
+    case 'new':S.sheet=false;if(S.focus)closeFocus();openForm(null);break;
+    case 'edit':if(h)openForm(h);break;
+    case 'bump':bump(+t.dataset.n);break;
+    case 'setcount':{const v=parseInt($('#setCount').value,10);if(h&&v>=0){h.count=v;touch(h)}break}
+    case 'chain':if(h){h.chain=Math.max(0,(h.chain||0)+(+t.dataset.n));touch(h)}break;
+    case 'chainbreak':if(h){h.chain=0;touch(h);toast('Chain reset to 0')}break;
+    case 'status':if(h){h.status=t.dataset.v;if(h.status!=='complete')delete h.completed;if(h.status!=='active'&&h.runningSince){h.timeMs=huntTime(h);h.runningSince=null}touch(h)}break;
+    case 'found':if(h){h.status='complete';h.completed=Date.now();if(h.runningSince){h.timeMs=huntTime(h);h.runningSince=null}touch(h);buzz([30,60,30,60,120]);const cp=$('#counterPanel');if(cp)cp.classList.add('burst');toast('Shiny logged at '+num(h.count)+'!')}break;
+    case 'timer':if(h){if(h.runningSince){h.timeMs=huntTime(h);h.runningSince=null}else h.runningSince=Date.now();touch(h)}break;
+    case 'phase':{const v=$('#phaseIn').value.trim();if(h){(h.phases=h.phases||[]).push({at:h.count||0,species:v||'Unknown',date:Date.now()});touch(h)}break}
+    case 'unphase':if(h){h.phases.splice(+t.dataset.i,1);touch(h)}break;
+    case 'del':
+      if(!h)break;
+      if(t.dataset.armed){S.hunts.delete(h.id);if(!h.example)Store.remove(h.id);else if(![...S.hunts.values()].some(x=>x.example))S.examples=false;S.sel=pickDefault();if(Store.mode!=='db')persistLocal();renderHunts();toast('Hunt deleted')}
+      else{t.dataset.armed='1';t.textContent='Confirm delete';t.classList.add('armed');setTimeout(()=>{if(t.isConnected){delete t.dataset.armed;t.textContent='Delete';t.classList.remove('armed')}},3500)}
+      break;
+    case 'gotoRng':setTab('rng');break;
+    case 'sheet':S.sheet=true;renderHunts();break;
+    case 'sheetclose':S.sheet=false;renderHunts();break;
+    case 'focus':openFocus();break;
+    case 'focusclose':closeFocus();break;
+  }
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='linkChain'){const h=cur();if(h){h.linkChain=e.target.checked;touch(h,false)}}
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='notesIn'){const h=cur();if(h){h.notes=e.target.value;Store.save(h)}}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&S.focus){closeFocus();return}
+  if(e.key==='Escape'&&S.sheet){S.sheet=false;renderHunts();return}
+  if(S.tab!=='hunts'||$('#modalRoot').firstChild)return;
+  const tg=e.target;if(tg.closest&&tg.closest('input,textarea,select,[contenteditable]'))return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key===' '||e.key==='+'||e.key==='='){if(tg.tagName==='BUTTON'&&e.key===' ')return;e.preventDefault();const h=cur();bump(h?(h.step||1):1)}
+  else if(e.key==='-'||e.key==='_'){e.preventDefault();bump(-1)}
+});
+setInterval(()=>{const h=cur();const el=$('#timerEl');if(h&&el&&h.runningSince)el.textContent=fmtTime(huntTime(h))},1000);
+
+/* ============ mods fields (shared) ============ */
+function modsFields(prefix,gk,mid,vals){
+  const g=GAMES[gk],m=METHOD[mid];if(!m)return '';
+  return m.mods.filter(k=>!(k==='charm'&&!g.charm)).map(k=>{
+    const d=MODDEF[k],id=prefix+'_'+k;
+    if(d.type==='check')return `<label class="check"><input type="checkbox" id="${id}" data-mod="${k}" ${vals&&vals[k]?'checked':''}> ${d.label}${k==='charm'?` <span class="muted">(+${g.charm})</span>`:''}</label>`;
+    return `<label class="f" for="${id}">${d.label}<select id="${id}" data-mod="${k}">${d.opts.map(([v,l])=>`<option value="${v}" ${vals&&+vals[k]===v?'selected':''}>${l}</option>`).join('')}</select></label>`;
+  }).join('');
+}
+function readMods(root){const o={};$$('[data-mod]',root).forEach(el=>{o[el.dataset.mod]=el.type==='checkbox'?el.checked:+el.value});return o}
+function gameOptions(sel){
+  const gens={};GKEYS.forEach(k=>{(gens[GAMES[k].gen]=gens[GAMES[k].gen]||[]).push(k)});
+  return Object.keys(gens).map(gn=>`<optgroup label="Generation ${gn}">${gens[gn].map(k=>`<option value="${k}" ${k===sel?'selected':''}>${esc(GAMES[k].n)}</option>`).join('')}</optgroup>`).join('');
+}
+function methodOptions(gk,sel){return methodsFor(gk).map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${esc(m.n)}</option>`).join('')}
+
+/* ============ hunt form ============ */
+function formGameOptions(sel,sp,all){
+  const gens={};GKEYS.forEach(k=>{(gens[GAMES[k].gen]=gens[GAMES[k].gen]||[]).push(k)});
+  return `<option value="" ${sel?'':'selected'}>Choose a game…</option>`+Object.keys(gens).map(gn=>`<optgroup label="Generation ${gn}">${gens[gn].map(k=>{const ok=all||dexAvail(sp,k);return `<option value="${k}" ${k===sel?'selected':''} ${ok?'':'disabled'}>${esc(GAMES[k].n)}${ok?'':' (not in this game)'}</option>`}).join('')}</optgroup>`).join('');
+}
+function openForm(h){
+  const isNew=!h;
+  const v=h?plain(h):{target:'',game:'',method:'full',enc:METHOD.full.enc,mods:{charm:true},chain:0,step:1,oddsOverride:0,notes:''};
+  if(!v.species&&v.target)v.species=dexFind(v.target);
+  const F={sp:v.species||null,all:!!(h&&h.target&&!v.species),act:-1,items:[]};
+  const root=$('#modalRoot');
+  root.innerHTML=`<div class="scrim" id="scrim"><form class="panel pad modal" id="hf" role="dialog" aria-modal="true" aria-labelledby="hfT" novalidate>
+    <h2 id="hfT">${isNew?'New hunt':'Edit hunt'}</h2>
+    <div class="fgrid">
+      <div class="f combo"><label for="hf_target">Target Pokémon</label>
+        <input id="hf_target" class="inp" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hf_list" placeholder="Search name or dex number" value="${esc(v.target)}">
+        <ul id="hf_list" class="combolist" role="listbox" hidden></ul></div>
+      <label class="f" for="hf_game">Game<select id="hf_game"></select></label>
+      <label class="f" for="hf_method">Method<select id="hf_method"></select></label>
+      <label class="f" for="hf_enc">Encounter type<select id="hf_enc">${ENC.map(x=>`<option ${x===v.enc?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
+    </div>
+    <div class="row" style="justify-content:space-between"><span class="note" id="hf_hint" style="margin:0"></span>
+      <label class="check" style="font-size:.8rem"><input type="checkbox" id="hf_all" ${F.all?'checked':''}> Ignore game availability</label></div>
+    <div class="mods" id="hf_mods"></div>
+    <div class="fgrid">
+      <label class="f" for="hf_step">Encounters per tap<input id="hf_step" type="number" min="1" max="99" value="${v.step||1}"></label>
+      <label class="f" for="hf_count">Starting count<input id="hf_count" type="number" min="0" value="${v.count||0}"></label>
+      <label class="f" for="hf_odds">Custom odds (1 in …)<input id="hf_odds" type="number" min="0" step="any" placeholder="Leave blank to calculate" value="${v.oddsOverride||''}"></label>
+    </div>
+    <div class="oddsprev" id="hf_prev"></div>
+    <p class="note" id="hf_desc" style="margin:0"></p>
+    <div class="row actions" style="justify-content:flex-end"><button type="button" class="btn ghost" id="hf_cancel">Cancel</button><button class="btn primary" type="submit">${isNew?'Start hunt':'Save changes'}</button></div>
+  </form></div>`;
+  const f=$('#hf'),inp=$('#hf_target'),list=$('#hf_list'),gs=$('#hf_game'),ms=$('#hf_method'),hint=$('#hf_hint');
+  let curGame=v.game||'',curMethod=v.method;
+  const fillGames=()=>{gs.innerHTML=formGameOptions(curGame,F.sp,F.all);gs.value=curGame};
+  const fillMethods=()=>{
+    if(!curGame){ms.innerHTML='<option value="">Pick a game first</option>';ms.disabled=true;return}
+    ms.disabled=false;const opts=methodsFor(curGame);if(!opts.some(m=>m.id===curMethod))curMethod='full';
+    ms.innerHTML=methodOptions(curGame,curMethod);
+  };
+  const setHint=t=>{hint.textContent=t||''};
+  const refresh=()=>{
+    const m=METHOD[curMethod];
+    if(!curGame){$('#hf_mods').innerHTML='';$('#hf_prev').textContent='Choose a game to calculate odds.';$('#hf_desc').textContent='';return}
+    const prev=readMods(f);
+    $('#hf_mods').innerHTML=modsFields('hf',curGame,curMethod,Object.keys(prev).length?prev:v.mods);
+    const ov=+$('#hf_odds').value;
+    const o=ov>0?{p:1/ov}:oddsOf(curGame,curMethod,readMods(f),v.chain||0);
+    const best=bestFor(curGame,m);
+    $('#hf_prev').innerHTML=o.target?'Targeted RNG: counter logs attempts.':`Odds now: <b>${fmtDen(o.p)}</b>${m.chain&&!ov?` · at max ${esc(m.chain.toLowerCase())}: <b>${fmtDen(best.p)}</b>`:''}`;
+    $('#hf_desc').textContent=m.d;
+  };
+  const avCount=()=>curGame&&!F.all?DEX.names.filter((_,i)=>dexAvail(i+1,curGame)).length:DEX.names.length;
+  const search=q=>{
+    q=q.trim().toLowerCase().replace(/^#/,'');const n=/^\d+$/.test(q)?+q:0;const out=[];
+    for(let i=1;i<=DEX.names.length;i++){
+      if(!F.all&&!dexAvail(i,curGame))continue;
+      const nm=DEX.names[i-1].toLowerCase();
+      if(!q||nm.includes(q)||(n&&String(i).startsWith(String(n))))out.push(i);
+    }
+    if(q&&!n)out.sort((a,b)=>(DEX.names[b-1].toLowerCase().startsWith(q)-DEX.names[a-1].toLowerCase().startsWith(q))||a-b);
+    return out.slice(0,80);
+  };
+  const openList=()=>{
+    F.items=search(inp.value===(F.sp&&DEX.names[F.sp-1])?'':inp.value);F.act=F.items.length?0:-1;
+    list.innerHTML=F.items.length?F.items.map((id,i)=>`<li role="option" id="hfo${id}" data-id="${id}" aria-selected="${i===F.act}">${esc(DEX.names[id-1])}<span class="mono muted">${dexNo(id)}</span></li>`).join(''):`<li class="none">No match${curGame&&!F.all?' in '+esc(GAMES[curGame].s):''}</li>`;
+    list.hidden=false;inp.setAttribute('aria-expanded','true');
+    inp.setAttribute('aria-activedescendant',F.act>=0?'hfo'+F.items[F.act]:'');
+  };
+  const closeList=()=>{list.hidden=true;inp.setAttribute('aria-expanded','false')};
+  const moveAct=d=>{if(!F.items.length)return;F.act=(F.act+d+F.items.length)%F.items.length;$$('li[data-id]',list).forEach((li,i)=>li.setAttribute('aria-selected',String(i===F.act)));const el=list.children[F.act];if(el)el.scrollIntoView({block:'nearest'});inp.setAttribute('aria-activedescendant','hfo'+F.items[F.act])};
+  const pick=id=>{
+    F.sp=id;inp.value=DEX.names[id-1];closeList();
+    if(curGame&&!F.all&&!dexAvail(id,curGame)){setHint(`${DEX.names[id-1]} isn't obtainable in ${GAMES[curGame].n}. Choose another game.`);curGame=''}
+    else setHint(curGame?'':`${DEX.names[id-1]} is available in ${GKEYS.filter(k=>dexAvail(id,k)).length} games.`);
+    fillGames();fillMethods();refresh();
+  };
+  inp.addEventListener('focus',openList);
+  inp.addEventListener('input',()=>{F.sp=dexFind(inp.value);openList()});
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){e.preventDefault();list.hidden?openList():moveAct(1)}
+    else if(e.key==='ArrowUp'){e.preventDefault();moveAct(-1)}
+    else if(e.key==='Enter'&&!list.hidden){e.preventDefault();if(F.act>=0)pick(F.items[F.act])}
+    else if(e.key==='Escape'&&!list.hidden){e.stopPropagation();closeList()}
+  });
+  inp.addEventListener('blur',()=>setTimeout(closeList,120));
+  list.addEventListener('mousedown',e=>{const li=e.target.closest('li[data-id]');if(li){e.preventDefault();pick(+li.dataset.id)}});
+  gs.addEventListener('change',()=>{curGame=gs.value;setHint(curGame&&!F.all?`${avCount()} Pokémon obtainable in ${GAMES[curGame].n}.`:'');fillMethods();refresh()});
+  ms.addEventListener('change',()=>{curMethod=ms.value;const m=METHOD[curMethod];$('#hf_enc').value=m.enc;$('#hf_step').value=m.step||1;refresh()});
+  $('#hf_all').addEventListener('change',e=>{F.all=e.target.checked;fillGames();setHint(F.all?'Showing every Pokémon and every game.':'');refresh()});
+  $('#hf_mods').addEventListener('change',refresh);
+  $('#hf_odds').addEventListener('input',refresh);
+  fillGames();fillMethods();refresh();
+  const close=()=>{root.innerHTML=''};
+  $('#hf_cancel').addEventListener('click',close);
+  $('#scrim').addEventListener('click',e=>{if(e.target.id==='scrim')close()});
+  f.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+  f.addEventListener('submit',e=>{
+    e.preventDefault();
+    const name=inp.value.trim();
+    if(!F.sp&&!(F.all&&name)){setHint(name?'Pick a Pokémon from the list, or tick "Ignore game availability" to use a custom name.':'Choose a target Pokémon.');inp.focus();return}
+    if(!curGame){setHint('Choose a game.');gs.focus();return}
+    const gk=curGame,mid=curMethod,m=METHOD[mid];
+    const data={target:F.sp?DEX.names[F.sp-1]:name,species:F.sp||null,game:gk,method:mid,enc:$('#hf_enc').value,mods:readMods(f),step:Math.max(1,parseInt($('#hf_step').value,10)||1),count:Math.max(0,parseInt($('#hf_count').value,10)||0),oddsOverride:+$('#hf_odds').value||0};
+    if(isNew){
+      if(S.examples){clearExamples()}
+      const nh=Object.assign({id:uid(),chain:0,linkChain:!!m.chain,status:'active',phases:[],started:Date.now(),timeMs:0,runningSince:null,notes:''},data);
+      S.hunts.set(nh.id,nh);S.sel=nh.id;S.filter='active';Store.save(nh,true);
+    }else{
+      const hh=S.hunts.get(h.id);Object.assign(hh,data);if(!METHOD[hh.method].chain)hh.chain=0;Store.save(hh,true);
+    }
+    close();renderHunts();
+  });
+  setTimeout(()=>inp.focus(),20);
+}
+
+/* ============ ODDS LAB ============ */
+const OL={game:'sv',method:'svoutbreak',mods:{charm:true,spark:3},chain:60};
+function renderOdds(){
+  const el=$('#tab-odds');
+  const g=GAMES[OL.game];
+  if(!methodsFor(OL.game).some(m=>m.id===OL.method))OL.method='full';
+  const m=METHOD[OL.method];
+  el.innerHTML=`
+   <div><h2>Odds Lab</h2><p class="note">Pick a game and method to see per-encounter odds, how long a typical hunt runs, and how every method in that game compares.</p></div>
+   <div class="panel pad" style="display:grid;gap:14px" id="olForm">
+     <div class="fgrid">
+       <label class="f" for="ol_game">Game<select id="ol_game">${gameOptions(OL.game)}</select></label>
+       <label class="f" for="ol_method">Method<select id="ol_method">${methodOptions(OL.game,OL.method)}</select></label>
+       ${m.chain?`<label class="f" for="ol_chain">${esc(m.chain)}<input id="ol_chain" type="number" min="0" value="${OL.chain}"></label>`:''}
+     </div>
+     <div class="mods">${modsFields('ol',OL.game,OL.method,OL.mods)}</div>
+   </div>
+   <div id="olOut"></div>`;
+  renderOddsOut();
+  $('#ol_game').addEventListener('change',e=>{OL.game=e.target.value;renderOdds()});
+  $('#ol_method').addEventListener('change',e=>{OL.method=e.target.value;OL.chain=METHOD[OL.method].chainMax||0;renderOdds()});
+  $('#olForm').addEventListener('change',e=>{if(e.target.dataset.mod){OL.mods=readMods($('#olForm'));renderOddsOut()}});
+  const ch=$('#ol_chain');if(ch)ch.addEventListener('input',()=>{OL.chain=Math.max(0,+ch.value||0);renderOddsOut()});
+}
+function renderOddsOut(){
+  const g=GAMES[OL.game],m=METHOD[OL.method];
+  const o=oddsOf(OL.game,OL.method,OL.mods,OL.chain);
+  const rows=methodsFor(OL.game).filter(x=>x.id!=='rng').map(x=>({m:x,b:bestFor(OL.game,x)})).sort((a,b)=>(b.b.p||0)-(a.b.p||0));
+  const top=rows[0];
+  let main;
+  if(o.target){main=`<div class="panel pad"><h3>RNG manipulation</h3><p class="note">Odds don't apply: you choose the result in advance. See the RNG Lab for ${esc(g.n)}.</p></div>`}
+  else{
+    const qs=[.25,.5,.75,.9,.95,.99];
+    main=`<div class="grid2">
+      <div class="panel pad" style="display:grid;gap:10px;align-content:start">
+        <div class="eyebrow">Per encounter</div>
+        <div class="oddsbig">${fmtDen(o.p)}</div>
+        <p class="note" style="margin:0">${o.rolls?`${o.rolls} shiny roll${o.rolls>1?'s':''} at base ${fmtDen(1/g.base)}.`:'Flat rate for this method.'} ${o.note?'This value is approximate.':''}</p>
+        <div class="tw"><table><thead><tr><th>Chance of a shiny</th><th class="num">Encounters needed</th></tr></thead><tbody>
+          ${qs.map(q=>`<tr><td>${q*100}%</td><td class="num">${num(needFor(o.p,q))}</td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="panel pad" style="display:grid;gap:10px;align-content:start">
+        <div class="eyebrow">Cumulative chance</div>
+        ${bigCurve(o.p)}
+        <p class="note" style="margin:0">Being "past odds" is common: at exactly 1× the odds, only about 63% of hunters have found their shiny.</p>
+      </div>
+    </div>`;
+  }
+  $('#olOut').innerHTML=main+`
+   <div class="panel pad" style="display:grid;gap:10px">
+     <h3>Every method in ${esc(g.n)}, best case</h3>
+     <p class="note" style="margin:0">Best case assumes every bonus: Shiny Charm, maxed chain, top research or Sparkling Power.</p>
+     <div class="tw stack"><table><thead><tr><th>Method</th><th class="num">Base</th><th class="num">Best case</th><th>How it works</th></tr></thead><tbody>
+       ${rows.map(r=>{const base=oddsOf(OL.game,r.m.id,{},0);return `<tr><td><b>${esc(r.m.n)}</b></td><td class="num" data-label="Base">${fmtDen(base.p)}</td><td class="num ${r===top?'best':''}" data-label="Best case">${fmtDen(r.b.p)}</td><td>${esc(r.m.d)}</td></tr>`}).join('')}
+       ${RNG_GAMES.includes(OL.game)?`<tr><td><b>RNG manipulation</b></td><td class="num" data-label="Base">—</td><td class="num" data-label="Best case">Targeted</td><td>${esc(METHOD.rng.d)}</td></tr>`:''}
+     </tbody></table></div>
+   </div>`;
+}
+function bigCurve(p){
+  const W=560,H=240,L=46,Rr=14,T=12,B=34;
+  const maxX=needFor(p,.99);
+  const x=n=>L+(W-L-Rr)*n/maxX,y=q=>T+(H-T-B)*(1-q);
+  let d='';for(let i=0;i<=120;i++){const n=maxX*i/120;d+=(i?'L':'M')+x(n).toFixed(1)+' '+y(cum(p,n)).toFixed(1)}
+  const yt=[0,.25,.5,.75,1].map(q=>`<line class="grid" x1="${L}" x2="${W-Rr}" y1="${y(q)}" y2="${y(q)}"/><text x="${L-6}" y="${y(q)+4}" text-anchor="end">${q*100}%</text>`).join('');
+  const xt=[0,.25,.5,.75,1].map(f=>`<text x="${x(maxX*f)}" y="${H-12}" text-anchor="${f===0?'start':f===1?'end':'middle'}">${num(Math.round(maxX*f))}</text>`).join('');
+  const one=1/p;const marks=one<maxX?`<line class="ref" x1="${x(one)}" x2="${x(one)}" y1="${T}" y2="${H-B}"/><circle class="nowdot" cx="${x(one)}" cy="${y(cum(p,one))}" r="4"/><text x="${x(one)+5}" y="${y(cum(p,one))+14}">1× odds · 63%</text>`:'';
+  return `<div style="overflow-x:auto"><svg class="track" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative chance of a shiny by encounter count">${yt}<path class="area" d="${d}L${x(maxX)} ${y(0)}L${x(0)} ${y(0)}Z"/><path class="curve" d="${d}"/>${marks}${xt}</svg></div>`;
+}
+
+/* ============ RNG LAB ============ */
+const NATURES=['Hardy','Lonely','Brave','Adamant','Naughty','Bold','Docile','Relaxed','Impish','Lax','Timid','Hasty','Serious','Jolly','Naive','Modest','Mild','Quiet','Bashful','Rash','Calm','Gentle','Sassy','Careful','Quirky'];
+const lcrng=s=>(Math.imul(s,0x41C64E6D)+0x6073)>>>0;
+const hex=(n,w=8)=>(n>>>0).toString(16).toUpperCase().padStart(w,'0');
+const parseHex=s=>{s=String(s||'').trim().replace(/^0x/i,'');return /^[0-9a-f]{1,8}$/i.test(s)?parseInt(s,16)>>>0:null};
+const LINKS={
+  pokefinder:['PokéFinder','https://github.com/Admiral-Fish/PokeFinder'],
+  eon:['EonTimer','https://github.com/DasAmpharos/EonTimer'],
+  rng3ds:['3DSRNGTool','https://github.com/wwwwwwzx/3DSRNGTool'],
+  capsight:['CaptureSight','https://github.com/zaksabeast/CaptureSight'],
+  raidcrawler:['RaidCrawler','https://github.com/LegoFigure11/RaidCrawler'],
+  permute:['PermuteMMO','https://github.com/kwsch/PermuteMMO'],
+  projxs:['Project_Xs','https://github.com/Lincoln-LM/Project_Xs'],
+  guides:['Pokémon RNG guides','https://www.pokemonrng.com/']
+};
+const lk=k=>`<a href="${LINKS[k][1]}" target="_blank" rel="noopener">${LINKS[k][0]}</a>`;
+const GENINFO=[
+ {gen:2,title:'Gen 2 · Gold, Silver, Crystal (incl. 3DS VC)',tag:'DV-based shininess',
+  body:`<p>Shininess comes from DVs: Defense, Speed and Special must be 10 and Attack one of 2, 3, 6, 7, 10, 11, 14 or 15. Two 8-bit RNG bytes advance every frame, so manipulation is frame-perfect timing, practical on emulator with frame advance and scripts.</p>
+  <ul><li>Shiny-parent breeding gives 1/64 eggs (DVs pass down).</li><li>Shiny Gen 1/2 Virtual Console Pokémon stay shiny when sent forward through Poké Transporter.</li></ul>`,tools:['dv','timer'],ext:['guides']},
+ {gen:3,title:'Gen 3 · RSE, FRLG, Colosseum/XD',tag:'32-bit LCRNG',
+  body:`<p>The RNG is a linear congruential generator (×0x41C64E6D + 0x6073). Statics and gifts use Method 1; wild slots use Method H-1/2/4. Emerald always boots with seed 0, so you only need to hit a frame. Ruby/Sapphire use seed 0x5A0 once the internal battery runs dry; FireRed/LeafGreen seeds come from timing at the title screen. Colosseum and XD use their own XDRNG.</p>`,tools:['lcrng','shiny','timer'],ext:['pokefinder','eon','guides']},
+ {gen:4,title:'Gen 4 · DPPt, HGSS',tag:'Seed = date + time + delay',
+  body:`<p>The initial seed is built from the date, time and the "delay" (frames between boot and pressing Continue). Hit a target seed with a two-phase timer, then advance frames in game. Stationary legends use Method 1; wild Pokémon use Method J (DPPt) or K (HGSS).</p>
+  <ul><li>DPPt: confirm your seed with the Coin Flip app or Chatot's pitch.</li><li>HGSS: confirm with Elm or Irwin's phone calls; Elm's calls also advance the RNG.</li></ul>`,tools:['seed4','lcrng','shiny','timer'],ext:['pokefinder','eon','guides']},
+ {gen:5,title:'Gen 5 · BW, B2W2',tag:'SHA-1 seed + MT',
+  body:`<p>The 64-bit seed is a SHA-1 hash of console parameters (MAC address, VCount, Timer0), date, time and held buttons, so you need your DS's calibrated parameters first. IVs come from Mersenne Twister frames; PIDs from a 64-bit LCRNG. Common targets: Entralink, C-Gear, Hidden Grottos, legends, eggs. Shiny threshold is xor &lt; 8.</p>`,tools:['shiny','timer'],ext:['pokefinder','eon','guides']},
+ {gen:6,title:'Gen 6 · XY, ORAS',tag:'TinyMT · MT',
+  body:`<p>RNG on 3DS usually means reading the seed with custom firmware, then targeting statics, wild encounters or eggs. Without CFW, the classic route to shiny eggs is ESV matching: hatch eggs whose Egg Shiny Value equals a trainer's TSV (0–4095). The threshold rises to xor &lt; 16.</p>`,tools:['shiny','tsv'],ext:['rng3ds','guides']},
+ {gen:7,title:'Gen 7 · SM, USUM, Let\'s Go',tag:'SFMT',
+  body:`<p>Sun/Moon and Ultra Sun/Ultra Moon can be RNG'd without CFW by finding your seed from the clock-hand "needle" sequence in the 3DSRNGTool timeline. ID RNG lets you pick a TSV that matches eggs you already have. Let's Go Pikachu/Eevee needs CFW.</p>`,tools:['shiny','tsv','g7id'],ext:['rng3ds','guides']},
+ {gen:8,title:'Gen 8 · SwSh, BDSP, Legends: Arceus',tag:'Xoroshiro · Xorshift',
+  body:`<ul><li><b>Sword/Shield:</b> Max Raid den seeds predict shinies; date-skipping advances the den. Overworld RNG needs CFW.</li><li><b>BDSP:</b> Xorshift128. Find your seed without CFW from player blinks, or read it with CFW. Works for statics, roamers, eggs.</li><li><b>Legends: Arceus:</b> outbreak and massive outbreak paths can be predicted by reading spawner seeds with CFW.</li><li>Gen 8+ shinies split into square (xor = 0) and star.</li></ul>`,tools:['shiny'],ext:['capsight','projxs','permute','pokefinder']},
+ {gen:9,title:'Gen 9 · Scarlet/Violet, Legends: Z-A',tag:'Xoroshiro',
+  body:`<p>Scarlet/Violet Tera Raid seeds can be read with CFW to find shiny raids, then reached by date skipping. Legends: Z-A has no established public RNG method for shinies that we know of; spawns roll randomly, so hunt with respawn resetting.</p>`,tools:['shiny'],ext:['raidcrawler','capsight','guides']}
+];
+const TOOLDEF={
+ dv:['Gen 2 DV shiny check',()=>`<div class="tfields">${['Atk','Def','Spe','Spc'].map(k=>`<label class="f" for="dv_${k}">${k} DV<input id="dv_${k}" type="number" min="0" max="15" value="${{Atk:10,Def:10,Spe:10,Spc:10}[k]}"></label>`).join('')}</div><div class="out" id="dv_out"></div>`],
+ shiny:['Shiny check (TID / SID / PID)',()=>`<div class="tfields"><label class="f" for="sc_gen">Rules<select id="sc_gen"><option value="3">Gen 3–5 (&lt; 8)</option><option value="6">Gen 6–7 (&lt; 16)</option><option value="8">Gen 8–9 (&lt; 16, square/star)</option></select></label><label class="f" for="sc_tid">TID<input id="sc_tid" type="number" min="0" max="65535" value="12345"></label><label class="f" for="sc_sid">SID<input id="sc_sid" type="number" min="0" max="65535" value="54321"></label><label class="f" for="sc_pid">PID (hex)<input id="sc_pid" value="6C0B4A31" class="mono"></label></div><div class="out" id="sc_out"></div>`],
+ tsv:['TSV / ESV calculator (Gen 6–7)',()=>`<div class="tfields"><label class="f" for="tv_tid">TID<input id="tv_tid" type="number" min="0" max="65535" value="12345"></label><label class="f" for="tv_sid">SID<input id="tv_sid" type="number" min="0" max="65535" value="54321"></label><label class="f" for="tv_esv">Egg ESV<input id="tv_esv" type="number" min="0" max="4095" placeholder="optional"></label></div><div class="out" id="tv_out"></div>`],
+ g7id:['Gen 7+ ID converter',()=>`<p class="note" style="margin:0">Gen 7 onward shows a 6-digit ID. Convert between it and the 16-bit TID/SID pair used for shiny math.</p><div class="tfields"><label class="f" for="g7_tid">TID (16-bit)<input id="g7_tid" type="number" min="0" max="65535" value="12345"></label><label class="f" for="g7_sid">SID (16-bit)<input id="g7_sid" type="number" min="0" max="65535" value="54321"></label></div><div class="out" id="g7_out"></div><div class="tfields"><label class="f" for="g7_dtid">Displayed ID (6-digit)<input id="g7_dtid" type="number" min="0" max="999999" placeholder="e.g. 103513"></label><label class="f" for="g7_dsid">Displayed SID<input id="g7_dsid" type="number" min="0" max="4294" placeholder="e.g. 3560"></label></div><div class="out" id="g7_out2">Enter a displayed ID and SID to get the 16-bit values.</div>`],
+ seed4:['Gen 4 seed ↔ date & time',()=>`<div class="tfields"><label class="f" for="s4_y">Year<input id="s4_y" type="number" min="2000" max="2099" value="2026"></label><label class="f" for="s4_mo">Month<input id="s4_mo" type="number" min="1" max="12" value="10"></label><label class="f" for="s4_d">Day<input id="s4_d" type="number" min="1" max="31" value="8"></label><label class="f" for="s4_h">Hour<input id="s4_h" type="number" min="0" max="23" value="14"></label><label class="f" for="s4_mi">Minute<input id="s4_mi" type="number" min="0" max="59" value="5"></label><label class="f" for="s4_s">Second<input id="s4_s" type="number" min="0" max="59" value="42"></label><label class="f" for="s4_dl">Delay<input id="s4_dl" type="number" min="0" max="65535" value="612"></label></div><div class="out" id="s4_out"></div>
+   <div class="eyebrow">Find a date & time for a target seed</div>
+   <div class="tfields"><label class="f" for="s4_t">Target seed (hex)<input id="s4_t" class="mono" value="DD0E0282"></label><label class="f" for="s4_ty">Year<input id="s4_ty" type="number" min="2000" max="2099" value="2026"></label><label class="f" for="s4_tm">Month<select id="s4_tm"><option value="0">Any</option>${[...Array(12)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select></label><label class="f" for="s4_min">Min. second<input id="s4_min" type="number" min="0" max="59" value="14"></label></div>
+   <button class="btn" data-tool="seed4find" style="justify-self:start">Find times</button><div id="s4_find"></div>`],
+ lcrng:['Gen 3/4 Method 1 frame search',()=>`<p class="note" style="margin:0">For statics and gifts (Method 1). Enter your seed and trainer IDs to list upcoming frames, or search ahead for shiny frames.</p><div class="tfields"><label class="f" for="lc_seed">Seed (hex)<input id="lc_seed" class="mono" value="0"></label><label class="f" for="lc_start">Start frame<input id="lc_start" type="number" min="1" value="1"></label><label class="f" for="lc_max">Search up to<input id="lc_max" type="number" min="1" max="5000000" value="200000"></label><label class="f" for="lc_tid">TID<input id="lc_tid" type="number" min="0" max="65535" value="12345"></label><label class="f" for="lc_sid">SID<input id="lc_sid" type="number" min="0" max="65535" value="54321"></label><label class="f" for="lc_nat">Nature<select id="lc_nat"><option value="-1">Any</option>${NATURES.map((n,i)=>`<option value="${i}">${n}</option>`).join('')}</select></label></div>
+   <label class="check"><input type="checkbox" id="lc_shiny" checked> Shiny frames only</label>
+   <button class="btn primary" data-tool="lcrng" style="justify-self:start">Search frames</button><div id="lc_out"></div>`],
+ timer:['Calibrated RNG timer',()=>timerUI()]
+};
+const RL={gen:4};
+function renderRng(){
+  const el=$('#tab-rng');
+  const gi=GENINFO.find(x=>x.gen===RL.gen);
+  el.innerHTML=`
+   <div><h2>RNG Lab</h2><p class="note">Calculators and a calibrated timer for every generation where RNG manipulation is possible, with links to the community tools that handle the heavy lifting.</p></div>
+   <div class="subnav" role="group" aria-label="Generation">${GENINFO.map(g=>`<button data-gen="${g.gen}" aria-pressed="${g.gen===RL.gen}">Gen ${g.gen}</button>`).join('')}</div>
+   <div class="panel pad gen"><h3>${esc(gi.title)} <span class="tag">${esc(gi.tag)}</span></h3>${gi.body}
+     <p class="note" style="margin:0">External tools: ${gi.ext.map(lk).join(' · ')}</p></div>
+   <div class="grid2">${gi.tools.map(t=>`<div class="panel pad tool" data-toolbox="${t}"><h3>${TOOLDEF[t][0]}</h3>${TOOLDEF[t][1]()}</div>`).join('')}</div>`;
+  $$('[data-gen]',el).forEach(b=>b.addEventListener('click',()=>{RL.gen=+b.dataset.gen;if(TM.running)stopTimer();TM.mode=defaultTimerMode();renderRng()}));
+  calcAll();
+  if(gi.tools.includes('timer'))timerRefresh();
+}
+function defaultTimerMode(){return RL.gen===3||RL.gen===2?'g3':RL.gen===5?'g5':'g4'}
+function iv(id){const e=document.getElementById(id);return e?parseInt(e.value,10)||0:0}
+function calcAll(){
+  const dvo=$('#dv_out');if(dvo){const a=iv('dv_Atk'),d=iv('dv_Def'),s=iv('dv_Spe'),c=iv('dv_Spc');const ok=d===10&&s===10&&c===10&&[2,3,6,7,10,11,14,15].includes(a);dvo.className='out'+(ok?' yes':'');dvo.textContent=ok?'Shiny. These DVs produce a shiny Pokémon.':'Not shiny. Needs Def, Spe and Spc = 10 and Atk in 2, 3, 6, 7, 10, 11, 14, 15.'}
+  const sco=$('#sc_out');if(sco){const gr=+$('#sc_gen').value,t=iv('sc_tid')&0xFFFF,s=iv('sc_sid')&0xFFFF,p=parseHex($('#sc_pid').value);
+    if(p==null){sco.className='out';sco.textContent='Enter a PID in hex (up to 8 digits).'}
+    else{const x=(t^s^(p>>>16)^(p&0xFFFF))>>>0;const thr=gr===3?8:16;const sh=x<thr;const kind=gr===8&&sh?(x===0?' (square)':' (star)'):'';const sv=gr===3?3:4;
+      sco.className='out'+(sh?' yes':'');sco.innerHTML=`${sh?'Shiny'+kind:'Not shiny'} · shiny value ${x}<br>TSV ${(t^s)>>sv} · PSV ${((p>>>16)^(p&0xFFFF))>>sv} · Nature ${NATURES[p%25]} · Ability slot ${p&1}`}}
+  const tvo=$('#tv_out');if(tvo){const t=iv('tv_tid')&0xFFFF,s=iv('tv_sid')&0xFFFF,tsv=(t^s)>>4;const ev=$('#tv_esv').value;let msg=`TSV ${tsv} (0–4095). Eggs whose ESV equals ${tsv} hatch shiny for this trainer.`;let ok=false;if(ev!==''){ok=+ev===tsv;msg+=ok?'<br>Match. This egg hatches shiny for this trainer.':`<br>No match (egg ESV ${+ev}).`}tvo.className='out'+(ok?' yes':'');tvo.innerHTML=msg}
+  const g7=$('#g7_out');if(g7){const t=iv('g7_tid')&0xFFFF,s=iv('g7_sid')&0xFFFF;const full=((s<<16)|t)>>>0;g7.textContent=`Displayed ID ${String(full%1000000).padStart(6,'0')} · displayed SID ${String(Math.floor(full/1000000)).padStart(4,'0')} · TSV ${(t^s)>>4}`;
+    const dt=$('#g7_dtid').value,ds=$('#g7_dsid').value;const o2=$('#g7_out2');if(dt!==''&&ds!==''){const f=(+ds)*1000000+(+dt);if(f>0xFFFFFFFF)o2.textContent='That combination is out of range.';else{const T=f%65536,Ss=Math.floor(f/65536);o2.textContent=`TID ${T} · SID ${Ss} · TSV ${(T^Ss)>>4}`}}}
+  const s4=$('#s4_out');if(s4){const y=iv('s4_y'),mo=iv('s4_mo'),d=iv('s4_d'),h=iv('s4_h'),mi=iv('s4_mi'),s=iv('s4_s'),dl=iv('s4_dl');const ab=(mo*d+mi+s)&0xFF,cd=h&0xFF,ef=(dl+y-2000)&0xFFFF;const seed=((ab<<24)|(cd<<16)|ef)>>>0;s4.innerHTML=`Seed <b>${hex(seed)}</b> · AB ${hex(ab,2)} · CD ${hex(cd,2)} · EFGH ${hex(ef,4)}`}
+}
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#tab-rng [data-toolbox]'))calcAll()});
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tool]');if(!t)return;
+  if(t.dataset.tool==='seed4find')findSeed4();
+  if(t.dataset.tool==='lcrng')searchLcrng();
+});
+function findSeed4(){
+  const out=$('#s4_find');const seed=parseHex($('#s4_t').value);const y=iv('s4_ty'),mf=+$('#s4_tm').value,minS=iv('s4_min');
+  if(seed==null){out.innerHTML='<div class="out">Enter the target seed in hex.</div>';return}
+  const ab=seed>>>24,cd=(seed>>>16)&0xFF,ef=seed&0xFFFF,delay=ef-(y-2000);
+  if(cd>23){out.innerHTML=`<div class="out">Not reachable: the hour byte is ${cd}, above 23.</div>`;return}
+  if(delay<0){out.innerHTML=`<div class="out">Not reachable in ${y}: the delay would be negative. Try an earlier year.</div>`;return}
+  const res=[];const dim=(yy,m)=>new Date(yy,m,0).getDate();
+  for(let mo=1;mo<=12&&res.length<30;mo++){if(mf&&mo!==mf)continue;
+    for(let d=1;d<=dim(y,mo)&&res.length<30;d++)for(let mi=0;mi<60&&res.length<30;mi++)for(let s=minS;s<60;s++){if(((mo*d+mi+s)&0xFF)===ab){res.push([mo,d,mi,s]);break}}}
+  out.innerHTML=`<div class="out">Hour ${cd} · delay ${delay}${delay<400?' (very short delays are hard to hit; consider a later year)':''}</div>`+
+    (res.length?`<div class="tw" style="max-height:260px;overflow:auto"><table><thead><tr><th>Date</th><th class="num">Time</th><th class="num">Delay</th></tr></thead><tbody>${res.map(([mo,d,mi,s])=>`<tr><td>${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}</td><td class="num">${String(cd).padStart(2,'0')}:${String(mi).padStart(2,'0')}:${String(s).padStart(2,'0')}</td><td class="num">${delay}</td></tr>`).join('')}</tbody></table></div>`:'<p class="note">No matches with these filters.</p>');
+}
+function searchLcrng(){
+  const out=$('#lc_out');let seed=parseHex($('#lc_seed').value);
+  if(seed==null){out.innerHTML='<div class="out">Enter the seed in hex.</div>';return}
+  const start=Math.max(1,iv('lc_start')),max=Math.min(5000000,Math.max(start,iv('lc_max'))),tid=iv('lc_tid')&0xFFFF,sid=iv('lc_sid')&0xFFFF,nat=+$('#lc_nat').value,shOnly=$('#lc_shiny').checked;
+  let s=seed;for(let i=1;i<start;i++)s=lcrng(s);
+  const rows=[];
+  for(let f=start;f<=max&&rows.length<(shOnly?60:40);f++){
+    const a=lcrng(s),b=lcrng(a),c=lcrng(b),d=lcrng(c);
+    const lo=a>>>16,hi=b>>>16,pid=((hi<<16)|lo)>>>0;
+    const sv=tid^sid^hi^lo,sh=sv<8;const n=pid%25;
+    if((!shOnly||sh)&&(nat<0||n===nat)){const i1=c>>>16,i2=d>>>16;rows.push({f,pid,sh,n,ivs:[i1&31,(i1>>5)&31,(i1>>10)&31,(i2>>5)&31,(i2>>10)&31,i2&31]})}
+    s=a;
+  }
+  out.innerHTML=rows.length?`<div class="tw" style="max-height:360px;overflow:auto"><table><thead><tr><th class="num">Frame</th><th class="num">PID</th><th>Nature</th><th class="num">HP/Atk/Def/SpA/SpD/Spe</th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.sh?'hit':''}"><td class="num">${num(r.f)}</td><td class="num">${hex(r.pid)}${r.sh?' ★':''}</td><td>${NATURES[r.n]}</td><td class="num">${r.ivs.join(' / ')}</td></tr>`).join('')}</tbody></table></div><p class="note">Frame numbering follows PokéFinder's convention. Rows marked ★ are shiny for your IDs.</p>`:`<div class="out">No matching frames between ${num(start)} and ${num(max)}. Raise the search limit or loosen the nature filter.</div>`;
+}
+
+/* ---- timer ---- */
+const GBA_MS=1000/59.7275, NDS_MS=1000/59.8261;
+const TM={mode:'g4',running:false,ctx:null,raf:0,t0:0,phases:[],
+  v:Object.assign({g3pre:5000,g3frame:1000,g3cal:0,g4delay:600,g4sec:50,g4dcal:0,g4scal:0,g5sec:50,g5cal:0,custom:'5000, 3000'},lsGet('shinyledger.timer')||{})};
+function timerUI(){
+  const v=TM.v,m=TM.mode;
+  const f=(id,l,val,extra='')=>`<label class="f" for="tm_${id}">${l}<input id="tm_${id}" type="number" value="${val}" ${extra}></label>`;
+  const fields={
+    g3:f('g3pre','Pre-timer (ms)',v.g3pre)+f('g3frame','Target frame',v.g3frame)+f('g3cal','Frame calibration',v.g3cal),
+    g4:f('g4delay','Target delay',v.g4delay)+f('g4sec','Target second',v.g4sec,'min="0" max="59"')+f('g4dcal','Delay calibration',v.g4dcal)+f('g4scal','Second calibration (ms)',v.g4scal),
+    g5:f('g5sec','Target second',v.g5sec,'min="0" max="59"')+f('g5cal','Calibration (ms)',v.g5cal),
+    custom:`<label class="f" for="tm_custom" style="grid-column:1/-1">Phases in ms, comma-separated<input id="tm_custom" value="${esc(v.custom)}"></label>`
+  }[m];
+  const hitLabel={g3:'Frame you hit',g4:'Delay you hit',g5:'Second you hit'}[m];
+  return `<div class="subnav" role="group" aria-label="Timer mode">${[['g3','Gen 3 frames'],['g4','Gen 4 delay'],['g5','Gen 5 seconds'],['custom','Custom']].map(([k,l])=>`<button data-tmode="${k}" aria-pressed="${k===m}">${l}</button>`).join('')}</div>
+   <div class="tfields">${fields}</div>
+   <div class="out" id="tm_phases"></div>
+   <div class="clock" id="tm_clock">0:00.000</div>
+   <div class="bar"><i id="tm_bar"></i></div>
+   <div class="row"><button class="btn primary" id="tm_go">Start</button><span class="note" id="tm_ph"></span></div>
+   ${hitLabel?`<div class="row"><input class="inp" id="tm_hit" type="number" placeholder="${hitLabel}" style="width:150px"><button class="btn" id="tm_cal">Update calibration</button></div>`:''}
+   <p class="note" style="margin:0">Five beeps count down to the end of each phase; act on the last one. Browser timing is accurate to a few milliseconds, so calibrate with your actual hits as you would in EonTimer.</p>`;
+}
+function computePhases(){
+  const v=TM.v;
+  if(TM.mode==='g3')return [Math.max(0,v.g3pre),Math.max(0,Math.round((v.g3frame+v.g3cal)*GBA_MS))];
+  if(TM.mode==='g4'){const p2=Math.max(0,Math.round((v.g4delay+v.g4dcal)*NDS_MS));let p1=v.g4sec*1000+v.g4scal+200-p2;while(p1<14000)p1+=60000;return [p1,p2]}
+  if(TM.mode==='g5'){let p1=v.g5sec*1000+v.g5cal+200;while(p1<14000)p1+=60000;return [p1]}
+  return String(v.custom).split(/[,\s]+/).map(x=>parseInt(x,10)).filter(x=>x>0).slice(0,8);
+}
+function timerRefresh(){
+  const box=$('[data-toolbox="timer"]');if(!box)return;
+  $$('input[id^="tm_"]',box).forEach(inp=>{const k=inp.id.slice(3);if(k in TM.v&&k!=='hit')TM.v[k]=k==='custom'?inp.value:(+inp.value||0)});
+  lsSet('shinyledger.timer',TM.v);
+  TM.phases=computePhases();
+  $('#tm_phases').textContent=TM.phases.length?TM.phases.map((p,i)=>`Phase ${i+1}: ${(p/1000).toFixed(3)} s`).join(' · '):'Add at least one phase.';
+}
+function fmtClock(ms){ms=Math.max(0,ms);const m=Math.floor(ms/60000),s=Math.floor(ms%60000/1000),r=Math.floor(ms%1000);return `${m}:${String(s).padStart(2,'0')}.${String(r).padStart(3,'0')}`}
+function startTimer(){
+  if(!TM.phases.length)return;
+  Wake.auto++;Wake.sync();TM.woke=true;
+  try{TM.ctx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){TM.ctx=null}
+  const now=performance.now();TM.t0=now;TM.running=true;
+  if(TM.ctx){const base=TM.ctx.currentTime+0.05;let acc=0;TM.phases.forEach(p=>{acc+=p;for(let k=4;k>=0;k--){const at=(acc-k*500)/1000;if(at<0)continue;const o=TM.ctx.createOscillator(),gn=TM.ctx.createGain();o.frequency.value=k===0?1320:880;gn.gain.value=.12;o.connect(gn).connect(TM.ctx.destination);o.start(base+at);o.stop(base+at+0.06)}})}
+  $('#tm_go').textContent='Stop';
+  const total=TM.phases.reduce((a,b)=>a+b,0);
+  const tick=()=>{if(!TM.running)return;const el=performance.now()-TM.t0;let acc=0,i=0;while(i<TM.phases.length&&el>acc+TM.phases[i]){acc+=TM.phases[i];i++}
+    if(i>=TM.phases.length){stopTimer(true);return}
+    const rem=acc+TM.phases[i]-el;const c=$('#tm_clock');if(!c){stopTimer();return}c.textContent=fmtClock(rem);$('#tm_bar').style.width=(el/total*100).toFixed(2)+'%';$('#tm_ph').textContent=`Phase ${i+1} of ${TM.phases.length}`;TM.raf=requestAnimationFrame(tick)};
+  tick();
+}
+function stopTimer(done){if(TM.woke){TM.woke=false;Wake.auto=Math.max(0,Wake.auto-1);Wake.sync()}TM.running=false;cancelAnimationFrame(TM.raf);if(TM.ctx){const c=TM.ctx;setTimeout(()=>c.close().catch(()=>{}),done?300:0);TM.ctx=null}const g=$('#tm_go');if(g)g.textContent='Start';const c=$('#tm_clock');if(c)c.textContent=done?'0:00.000':fmtClock(TM.phases[0]||0);const b=$('#tm_bar');if(b)b.style.width=done?'100%':'0';const p=$('#tm_ph');if(p)p.textContent=done?'Done':''}
+document.addEventListener('click',e=>{
+  const mb=e.target.closest('[data-tmode]');if(mb){if(TM.running)stopTimer();TM.mode=mb.dataset.tmode;const box=$('[data-toolbox="timer"]');box.innerHTML=`<h3>${TOOLDEF.timer[0]}</h3>`+timerUI();timerRefresh();return}
+  if(e.target.id==='tm_go'){timerRefresh();TM.running?stopTimer():startTimer()}
+  if(e.target.id==='tm_cal'){const hit=$('#tm_hit').value;if(hit==='')return;const h=+hit,v=TM.v;
+    if(TM.mode==='g3')v.g3cal+=v.g3frame-h;
+    if(TM.mode==='g4')v.g4dcal+=v.g4delay-h;
+    if(TM.mode==='g5')v.g5cal+=(v.g5sec-h)*1000;
+    const box=$('[data-toolbox="timer"]');box.innerHTML=`<h3>${TOOLDEF.timer[0]}</h3>`+timerUI();timerRefresh();toast('Calibration updated')}
+});
+document.addEventListener('input',e=>{if(e.target.id&&e.target.id.startsWith('tm_')&&e.target.id!=='tm_hit'){if(!TM.running)timerRefresh()}});
+
+/* ============ GUIDE ============ */
+function renderGuide(){
+  const el=$('#tab-guide');
+  el.innerHTML=`
+   <div><h2>Methods & encounter types</h2><p class="note">Every hunting method this tracker understands, by game, with base and best-case odds. Base odds are 1/8192 through Gen 5 and 1/4096 from Gen 6 on; each "roll" is one more check at the base rate.</p></div>
+   ${GKEYS.map(gk=>{const g=GAMES[gk];const ms=methodsFor(gk).filter(m=>m.id!=='sr');return `<div class="panel pad" style="display:grid;gap:10px">
+     <h3>${esc(g.n)} <span class="muted mono" style="font-size:.8rem;font-weight:500">Gen ${g.gen} · base ${fmtDen(1/g.base)}${g.charm?` · Shiny Charm +${g.charm} rolls`:' · no Shiny Charm'}</span></h3>
+     <div class="tw stack"><table><thead><tr><th>Method</th><th class="num">Base</th><th class="num">Best case</th><th>Notes</th></tr></thead><tbody>
+     ${ms.map(m=>{const b=bestFor(gk,m),o=oddsOf(gk,m.id,{},0);return `<tr><td><b>${esc(m.n)}</b></td><td class="num" data-label="Base">${o.target?'—':fmtDen(o.p)}</td><td class="num" data-label="Best case">${b.target?'Targeted':fmtDen(b.p)}</td><td>${esc(m.d)}</td></tr>`}).join('')}
+     </tbody></table></div></div>`}).join('')}
+   <div class="panel pad gen"><h3>Shiny locks</h3><p>Many story Pokémon can never be shiny, so check before you soft reset. From Gen 5 on, most box legendaries and key gifts are locked (Victini, Reshiram and Zekrom in Black/White; Xerneas and Yveltal in X/Y; Zacian and Zamazenta in Sword/Shield; Koraidon and Miraidon in Scarlet/Violet). Legends: Arceus locks every legendary and mythical plus the starters; Legends: Z-A locks legendaries, mythicals and story gifts apart from a few DLC legends.</p></div>
+   <div class="panel pad gen"><h3>Encounter types you can track</h3><p>${ENC.map(esc).join(' · ')}</p></div>`;
+}
+
+/* ============ THEMES ============ */
+function renderThemes(){
+  const el=$('#tab-themes');
+  const groups=[...new Set(SKINS.map(s=>s.group))];
+  const card=(id,n,t,font)=>`<button class="sw" data-skin="${id}" aria-pressed="${S.skin===id}" style="background:${t.bg}">
+     <div class="top" style="background:${t.chrome}"><i style="background:${t['chrome-ink']}"></i><i style="background:${t['chrome-ink']};opacity:.6"></i><i style="background:${t.spark}"></i></div>
+     <div class="body"><div class="card" style="background:${t.panel};color:${t.ink};border:1px solid ${t.line}"><span style="font-family:${font};font-size:${font.includes('Press')?'.62rem':'.95rem'};font-weight:700">1,365</span><span style="width:12px;height:12px;border-radius:50%;background:${t.accent}"></span></div>
+     <div style="display:flex;gap:4px"><span style="flex:2;height:6px;border-radius:3px;background:${t.accent}"></span><span style="flex:1;height:6px;border-radius:3px;background:${t.spark}"></span><span style="flex:1;height:6px;border-radius:3px;background:${t.muted}"></span></div></div>
+     <div class="n">${esc(n)}</div></button>`;
+  el.innerHTML=`
+   <div><h2>Themes</h2><p class="note">${SKINS.length+1} palettes drawn from the handhelds, version colors, regions, Poké Balls and fan-favorite Pokémon. Your choice is remembered.</p></div>
+   <div class="skingroup"><div class="eyebrow">Default</div><div class="skins">${card('system','Lab (follows your light/dark setting)',{bg:'#f3f4f6',chrome:'#16181d','chrome-ink':'#fff',panel:'#fff',ink:'#16181d',line:'#dde0e6',accent:'#cf3328',spark:'#e0a10b',muted:'#5b6270'},FONTS.chakra[0])}</div></div>
+   ${groups.map(gr=>`<div class="skingroup"><div class="eyebrow">${esc(gr)}</div><div class="skins">${SKINS.filter(s=>s.group===gr).map(s=>card(s.id,s.n,s.t,FONTS[s.font][0])).join('')}</div></div>`).join('')}`;
+  $$('.sw',el).forEach(b=>b.addEventListener('click',()=>applySkin(b.dataset.skin)));
+}
+
+/* ============ sync pill, account sheet, install ============ */
+const SYNC_LABEL={local:'This device',signedout:'Sign in to sync',saving:'Saving…',synced:'Synced',offline:'Offline',error:'Sync issue'};
+function renderSync(){
+  const b=$('#syncBtn');if(!b)return;
+  b.dataset.s=Store.status;b.querySelector('span').textContent=SYNC_LABEL[Store.status]||'';
+  b.title=Store.status==='offline'?'Offline: changes are saved on this device and will upload when you reconnect.':SYNC_LABEL[Store.status];
+}
+let installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e});
+const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function installBlock(){
+  if(isStandalone())return `<p class="note" style="margin:0">Installed. You're using the home screen app.</p>`;
+  if(installEvt)return `<button class="btn" type="button" id="acInstall">Install on this device</button>`;
+  if(isIOS())return `<p class="note" style="margin:0">In Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>`;
+  return `<p class="note" style="margin:0">Use your browser menu: <b>Install app</b> or <b>Add to Home screen</b>.</p>`;
+}
+function openAccount(){
+  const root=$('#modalRoot');
+  const u=Store.user;
+  let body;
+  if(!sb){body=`<p class="note" style="margin:0">Cloud sync isn't set up on this copy yet, so hunts are saved on this device only.</p>`}
+  else if(u){body=`<div class="kv" style="grid-template-columns:auto 1fr"><span class="muted">Signed in as</span><span style="text-align:right;overflow-wrap:anywhere">${esc(u.email||'')}</span><span class="muted">Status</span><span style="text-align:right">${esc(SYNC_LABEL[Store.status])}</span><span class="muted">Waiting to upload</span><span class="mono" style="text-align:right">${Store.outbox.size}</span></div>
+      <div class="row"><button class="btn primary" type="button" id="acSync">Sync now</button><button class="btn ghost danger" type="button" id="acOut">Sign out</button></div>`}
+  else{body=`<p class="note" style="margin:0">Sign in to keep your hunts in step across your phone and computer. No password: we email you a code.</p>
+      <div id="acStep1" class="row" style="flex-wrap:nowrap"><input class="inp" id="acEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com"><button class="btn primary" type="button" id="acSend">Send code</button></div>
+      <div id="acStep2" class="row" style="flex-wrap:nowrap" hidden><input class="inp mono" id="acCode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code from email"><button class="btn primary" type="button" id="acVerify">Sign in</button></div>
+      <p class="note" id="acMsg" style="margin:0" aria-live="polite"></p>`}
+  root.innerHTML=`<div class="scrim" id="acScrim"><div class="panel pad modal" role="dialog" aria-modal="true" aria-labelledby="acT">
+    <div class="row" style="justify-content:space-between"><h2 id="acT">Account & app</h2><button class="btn ghost" type="button" id="acClose">Close</button></div>
+    ${body}
+    <div class="eyebrow">Home screen app</div>${installBlock()}
+  </div></div>`;
+  const close=()=>{root.innerHTML=''};
+  $('#acClose').onclick=close;
+  $('#acScrim').addEventListener('click',e=>{if(e.target.id==='acScrim')close()});
+  const msg=t=>{const m=$('#acMsg');if(m)m.textContent=t};
+  const ins=$('#acInstall');if(ins)ins.onclick=async()=>{const e=installEvt;installEvt=null;try{e.prompt();await e.userChoice}catch(x){}openAccount()};
+  if($('#acSync'))$('#acSync').onclick=async()=>{await Store.flush();await Store.pull();openAccount()};
+  if($('#acOut'))$('#acOut').onclick=async()=>{await Store.signOut();close();toast('Signed out. Hunts stay on this device.')};
+  let email='';
+  if($('#acSend'))$('#acSend').onclick=async()=>{
+    email=$('#acEmail').value.trim();if(!/^\S+@\S+\.\S+$/.test(email)){msg('Enter a valid email address.');return}
+    $('#acSend').disabled=true;msg('Sending…');
+    const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
+    $('#acSend').disabled=false;
+    if(error){msg(error.message||'Could not send the code. Try again.');return}
+    $('#acStep1').hidden=true;$('#acStep2').hidden=false;msg('Check '+email+' for your sign-in code.');$('#acCode').focus();
+  };
+  if($('#acVerify'))$('#acVerify').onclick=async()=>{
+    const token=$('#acCode').value.replace(/\s/g,'');if(token.length<6){msg('Enter the code from the email.');return}
+    $('#acVerify').disabled=true;msg('Signing in…');
+    const {error}=await sb.auth.verifyOtp({email,token,type:'email'});
+    $('#acVerify').disabled=false;
+    if(error){msg('That code did not work. Check it or send a new one.');return}
+    close();toast('Signed in. Syncing your hunts.');
+  };
+}
+document.addEventListener('click',e=>{if(e.target.closest('#syncBtn'))openAccount()});
+
+/* ============ boot ============ */
+(function boot(){
+  const sel=$('#skinSel');
+  const groups=[...new Set(SKINS.map(s=>s.group))];
+  sel.innerHTML=`<option value="system">Lab (system)</option>`+groups.map(g=>`<optgroup label="${esc(g)}">${SKINS.filter(s=>s.group===g).map(s=>`<option value="${s.id}">${esc(s.n)}</option>`).join('')}</optgroup>`).join('');
+  sel.addEventListener('change',()=>applySkin(sel.value));
+  const local=loadLocal();
+  if(local.length){local.forEach(h=>S.hunts.set(h.id,h))}else{exampleHunts().forEach(h=>S.hunts.set(h.id,h));S.examples=true}
+  S.sel=pickDefault();
+  renderThemes();
+  applySkin(lsGet(LS_SKIN)||'system',false);
+  renderHunts();renderOdds();renderRng();renderGuide();
+  const ui=lsGet(LS_UI);if(ui&&ui.wake){Wake.want=true;Wake.on()}const okTabs=['hunts','odds','rng','guide','themes'];
+  const hashTab=(location.hash||'').slice(1);
+  setTab(okTabs.includes(hashTab)?hashTab:(ui&&okTabs.includes(ui.tab)?ui.tab:'hunts'));
+  renderSync();
+  Store.connect();
+  if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+})();
+</script>
+</body>
+</html>
