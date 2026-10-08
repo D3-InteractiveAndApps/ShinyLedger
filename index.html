@@ -74,6 +74,7 @@ h3{font-size:calc(1.05rem * var(--dscale))}
 .syncpill[data-s="offline"] i{background:#9aa3ad;opacity:1}
 .syncpill[data-s="error"] i{background:#ff6b5e;opacity:1}
 .skin-pick{order:4}
+.syncpill[data-s="signedout"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .brand svg{width:26px;height:26px;flex:none}
 .brand b{font-family:var(--font-display);font-size:calc(1.2rem * var(--dscale));letter-spacing:.02em}
 .tabs{display:flex;gap:4px;flex-wrap:wrap}
@@ -242,10 +243,13 @@ button,a,.count,.tap{touch-action:manipulation;-webkit-tap-highlight-color:trans
   .chrome .tabs{display:none}
   .brand b{font-size:calc(1.05rem * var(--dscale))}
   .skin-pick span{display:none}
-  .skin-pick select{max-width:34vw}
+  .skin-pick select{max-width:27vw}
   .syncpill{padding:0;width:36px;height:36px;justify-content:center;flex:none}
   .syncpill i{width:10px;height:10px}
   .syncpill span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .syncpill[data-s="signedout"]{width:auto;padding:0 14px;background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .syncpill[data-s="signedout"] i{display:none}
+  .syncpill[data-s="signedout"] span{position:static;width:auto;height:auto;clip:auto}
   .brand b{overflow:hidden;text-overflow:ellipsis}
   .brand b{white-space:nowrap}
   main{padding-block:14px calc(160px + env(safe-area-inset-bottom,0px))}
@@ -768,7 +772,7 @@ function renderHunts(){
            <span class="c">${num(h.count)}</span>
          </button>`}).join(''):`<p class="muted" style="padding:8px 4px;margin:0">No hunts here yet.</p>`}</div>
        <p class="note only-d">Keyboard: <span class="kbd">Space</span> or <span class="kbd">+</span> adds an encounter to the open hunt, <span class="kbd">−</span> removes one.</p>
-       <p class="note">${Store.user?'Hunts sync to your account and follow you to other devices.':sb?'Hunts are saved on this device. Sign in to sync them.':'Hunts are saved on this device.'}</p>
+       <p class="note">${Store.user?'Hunts sync to your account and follow you to other devices.':sb?'Hunts are saved on this device. <button class="btn" type="button" data-act="account" style="margin-top:6px">Sign in to sync</button>':'Hunts are saved on this device.'}</p>
      </aside>
      <div class="detail" id="detail">${renderDetail()}</div>
    </div>`;
@@ -957,6 +961,7 @@ document.addEventListener('click',e=>{
       break;
     case 'gotoRng':setTab('rng');break;
     case 'sheet':S.sheet=true;renderHunts();break;
+    case 'account':S.sheet=false;renderHunts();openAccount();break;
     case 'sheetclose':S.sheet=false;renderHunts();break;
     case 'focus':openFocus();break;
     case 'focusclose':closeFocus();break;
@@ -1387,7 +1392,7 @@ function renderThemes(){
 }
 
 /* ============ sync pill, account sheet, install ============ */
-const SYNC_LABEL={local:'This device',signedout:'Sign in to sync',saving:'Saving…',synced:'Synced',offline:'Offline',error:'Sync issue'};
+const SYNC_LABEL={local:'This device',signedout:'Sign in',saving:'Saving…',synced:'Synced',offline:'Offline',error:'Sync issue'};
 function renderSync(){
   const b=$('#syncBtn');if(!b)return;
   b.dataset.s=Store.status;b.querySelector('span').textContent=SYNC_LABEL[Store.status]||'';
@@ -1407,7 +1412,7 @@ function openAccount(){
   const root=$('#modalRoot');
   const u=Store.user;
   let body;
-  if(!sb){body=`<p class="note" style="margin:0">Cloud sync isn't set up on this copy yet, so hunts are saved on this device only.</p>`}
+  if(!sb){const c=window.SHINY_CONFIG||{};const why=!(c.supabaseUrl&&c.supabaseAnonKey)?'<b>config.js</b> doesn\'t have a Supabase URL and anon key yet. Add them, push to GitHub, then reopen the app.':!window.supabase?'The sync library (vendor/supabase.js) didn\'t load. Check that the vendor folder is in your repo.':'Sync could not start.';body=`<p class="note" style="margin:0">Sign-in isn't available, so hunts are saved on this device only.</p><p class="note" style="margin:0">${why}</p>`}
   else if(u){body=`<div class="kv" style="grid-template-columns:auto 1fr"><span class="muted">Signed in as</span><span style="text-align:right;overflow-wrap:anywhere">${esc(u.email||'')}</span><span class="muted">Status</span><span style="text-align:right">${esc(SYNC_LABEL[Store.status])}</span><span class="muted">Waiting to upload</span><span class="mono" style="text-align:right">${Store.outbox.size}</span></div>
       <div class="row"><button class="btn primary" type="button" id="acSync">Sync now</button><button class="btn ghost danger" type="button" id="acOut">Sign out</button></div>`}
   else{body=`<p class="note" style="margin:0">Sign in to keep your hunts in step across your phone and computer. No password: we email you a code.</p>
