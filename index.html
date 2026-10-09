@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Shiny Ledger">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Shiny Ledger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +76,7 @@ h3{font-size:calc(1.05rem * var(--dscale))}
 .syncpill[data-s="error"] i{background:#ff6b5e;opacity:1}
 .skin-pick{order:4}
 .syncpill[data-s="signedout"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.brand svg{width:26px;height:26px;flex:none}
+.brand svg{width:28px;height:28px;flex:none}
 .brand b{font-family:var(--font-display);font-size:calc(1.2rem * var(--dscale));letter-spacing:.02em}
 .tabs{display:flex;gap:4px;flex-wrap:wrap}
 .tabs button{background:none;border:0;color:var(--chrome-ink);opacity:.72;padding:7px 11px;border-radius:7px;cursor:pointer;font-weight:600;font-size:.88rem}
@@ -314,15 +315,27 @@ button,a,.count,.tap{touch-action:manipulation;-webkit-tap-highlight-color:trans
   .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))}
 }
 /* focus mode */
-.focus{position:fixed;inset:0;z-index:55;background:var(--bg);color:var(--ink);display:grid;grid-template-rows:auto 1fr auto;padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))}
+.focus{position:fixed;inset:0;z-index:55;background:var(--bg);color:var(--ink);display:grid;grid-template-rows:auto minmax(0,1fr) auto;overscroll-behavior:contain;touch-action:manipulation;padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))}
 .focus .ftop{display:flex;gap:10px;align-items:center}
 .focus .ftop .t{min-width:0;margin-right:auto}
 .focus .ftop .t b{display:block;font-family:var(--font-display);font-size:calc(1.3rem * var(--dscale));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.focus .tap{border:0;border-radius:20px;margin:12px 0;background:var(--panel);border:1px solid var(--line);display:grid;place-content:center;justify-items:center;gap:10px;cursor:pointer;color:var(--ink);user-select:none;-webkit-user-select:none;padding:16px}
-.focus .tap:active{background:var(--panel2)}
-.focus .fcount{font-family:var(--font-display);font-weight:700;font-size:calc(clamp(4.5rem,24vw,10rem) * var(--dscale));line-height:1;font-variant-numeric:tabular-nums}
-.focus .fpct{font-family:var(--font-display);font-weight:700;font-size:calc(1.6rem * var(--dscale));color:var(--spark)}
+.focus .fmid{display:grid;justify-items:center;align-content:center;gap:clamp(10px,2.4vh,22px);padding-block:8px;min-height:0}
+.focus .fread{display:grid;justify-items:center;gap:4px;text-align:center}
+.focus .fcount{font-family:var(--font-display);font-weight:700;font-size:calc(clamp(3.6rem,17vw,7.5rem) * var(--dscale));line-height:1;font-variant-numeric:tabular-nums}
+.focus .fpct{font-family:var(--font-display);font-weight:700;font-size:calc(1.45rem * var(--dscale));color:var(--spark);font-variant-numeric:tabular-nums}
+.focus .fbar{width:min(260px,70vw);height:6px;border-radius:99px;background:var(--panel2);overflow:hidden;border:1px solid var(--line)}
+.focus .fbar i{display:block;height:100%;background:var(--spark);transition:width .2s ease}
 .focus .hint{font-size:.82rem;color:var(--muted)}
+.upbtn{--sz:min(64vw,44vh,300px);width:var(--sz);height:var(--sz);border-radius:50%;border:0;padding:0;cursor:pointer;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--accent) 78%,#fff) 0%,var(--accent) 62%,color-mix(in srgb,var(--accent) 78%,#000) 100%);
+  color:var(--on-accent);box-shadow:0 10px 0 color-mix(in srgb,var(--accent) 55%,#000),0 18px 40px rgba(0,0,0,.28);
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  transition:transform .06s ease,box-shadow .06s ease;position:relative}
+.upbtn svg{width:46%;height:46%;pointer-events:none}
+.upbtn .stepn{position:absolute;bottom:15%;font-family:var(--font-mono);font-weight:600;font-size:1rem;opacity:.85;pointer-events:none}
+.upbtn.down{transform:translateY(8px);box-shadow:0 2px 0 color-mix(in srgb,var(--accent) 55%,#000),0 6px 16px rgba(0,0,0,.25)}
+.upbtn:disabled{opacity:.4;cursor:not-allowed}
+.upbtn:focus-visible{outline:3px solid var(--spark);outline-offset:6px}
 .focus .fbot{display:flex;gap:8px;flex-wrap:wrap}
 .focus .fbot .btn{flex:1;min-height:50px;min-width:0}
 .focus .fchain{display:flex;gap:8px;align-items:center;width:100%;justify-content:center;flex-wrap:wrap}
@@ -333,7 +346,7 @@ button,a,.count,.tap{touch-action:manipulation;-webkit-tap-highlight-color:trans
 <header class="chrome">
   <div class="chrome-in">
     <div class="brand">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l3.2 9.4L29 14l-9.8 3.2L16 30l-3.2-12.8L3 14l9.8-2.6z" fill="var(--star, var(--spark))"/><path d="M26 2l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill="var(--chrome-ink)" opacity=".8"/></svg>
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="var(--chrome-ink)" stroke-opacity=".18" stroke-width="3"/><path d="M16 3.5A12.5 12.5 0 1 1 3.5 16" fill="none" stroke="var(--star, var(--spark))" stroke-width="3" stroke-linecap="round"/><circle cx="3.5" cy="16" r="2.6" fill="var(--chrome-ink)"/><path d="M16 7.4Q17.1 14.9 24.6 16Q17.1 17.1 16 24.6Q14.9 17.1 7.4 16Q14.9 14.9 16 7.4Z" fill="var(--star, var(--spark))"/></svg>
       <b>Shiny Ledger</b>
     </div>
     <button class="syncpill" id="syncBtn" type="button" data-s="local"><i></i><span>This device</span></button>
@@ -692,7 +705,7 @@ function afterRemote(){
   persistLocal();
   const a=document.activeElement;
   if(a&&(a.id==='notesIn'||a.id==='phaseIn'||a.id==='setCount')&&!$('#modalRoot').firstChild){renderSync();return}
-  renderHunts();if(S.focus)renderFocus();
+  renderHunts();if(S.focus)updateFocus();
 }
 
 function pickDefault(){const a=sortedHunts('active');return a.length?a[0].id:(S.hunts.size?[...S.hunts.keys()][0]:null)}
@@ -906,27 +919,60 @@ document.addEventListener('change',async e=>{if(e.target.id==='wakeChk'){Wake.wa
 function buzz(ms){try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}}
 function openFocus(){if(!cur())return;S.focus=true;Wake.auto++;Wake.sync();renderFocus()}
 function closeFocus(){if(!S.focus)return;S.focus=false;Wake.auto=Math.max(0,Wake.auto-1);Wake.sync();$('#focusRoot').innerHTML='';renderHunts()}
+function focusChain(h,m){return m&&m.chain?`<div class="fchain"><span class="eyebrow">${esc(m.chain)}</span><button class="btn" style="flex:0 0 auto" data-act="chain" data-n="-1" aria-label="Lower chain">−</button><b class="mono" id="fchainv" style="font-size:1.2rem;min-width:2ch;text-align:center">${h.chain||0}</b><button class="btn" style="flex:0 0 auto" data-act="chain" data-n="1" aria-label="Raise chain">+</button><button class="btn ghost danger" style="flex:0 0 auto" data-act="chainbreak">Chain broke</button></div>`:''}
 function renderFocus(){
   const root=$('#focusRoot');const h=cur();
   if(!S.focus||!h){root.innerHTML='';return}
   const g=GAMES[h.game],m=METHOD[h.method],o=huntOdds(h),c=h.count||0,step=h.step||1,done=h.status==='complete';
-  const cp=o.p?cum(o.p,c):0;
+  const odds=!!(o.p&&!o.target),cp=odds?cum(o.p,c):0;
+  root.dataset.key=[h.id,h.status,step,h.method,h.game].join('|');
   root.innerHTML=`<div class="focus" role="dialog" aria-modal="true" aria-label="Focus mode">
     <div class="ftop"><div class="t"><b>${esc(h.target)}</b><span class="muted" style="font-size:.85rem">${esc(g?g.s:'')} · ${esc(m?m.n:'')} · ${o.target?'RNG attempts':fmtDen(o.p)}</span></div>
       <button class="btn" data-act="focusclose">Done</button></div>
-    <button class="tap" data-act="bump" data-n="${step}" ${done?'disabled':''} aria-label="Add ${step}">
-      <span class="fcount" id="fcount">${num(c)}</span>
-      ${o.p&&!o.target?`<span class="fpct">${pct(cp)}</span><span class="hint">of hunters would have found it by now</span>`:''}
-      <span class="hint">${done?'Shiny found':`Tap anywhere to add ${step}`}</span>
-    </button>
+    <div class="fmid">
+      <div class="fread" aria-live="polite">
+        <span class="fcount" id="fcount">${num(c)}</span>
+        ${odds?`<span class="fpct" id="fpct">${pct(cp)}</span><div class="fbar"><i id="fbar" style="width:${(cp*100).toFixed(2)}%"></i></div><span class="hint">of hunters would have found it by now</span>`:`<span class="hint">${o.target?'attempts':'encounters'}</span>`}
+      </div>
+      <button class="upbtn" id="upBtn" type="button" ${done?'disabled':''} aria-label="Add ${step}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V5M5 11.5 12 4.5l7 7"/></svg>
+        <span class="stepn">+${step}</span>
+      </button>
+      ${done?'<span class="hint">Shiny found</span>':''}
+    </div>
     <div class="fbot">
-      ${m&&m.chain?`<div class="fchain"><span class="eyebrow">${esc(m.chain)}</span><button class="btn" style="flex:0 0 auto" data-act="chain" data-n="-1" aria-label="Lower chain">−</button><b class="mono" style="font-size:1.2rem">${h.chain||0}</b><button class="btn" style="flex:0 0 auto" data-act="chain" data-n="1" aria-label="Raise chain">+</button><button class="btn ghost danger" style="flex:0 0 auto" data-act="chainbreak">Chain broke</button></div>`:''}
+      ${focusChain(h,m)}
       <button class="btn" data-act="bump" data-n="-1" ${done?'disabled':''}>−1</button>
-      <button class="btn" data-act="timer">${h.runningSince?'Pause timer':'Start timer'}</button>
+      <button class="btn" id="ftimer" data-act="timer">${h.runningSince?'Pause timer':'Start timer'}</button>
       ${done?'':`<button class="btn" data-act="found" style="border-color:var(--spark)">★ Found</button>`}
     </div></div>`;
+  wireUpBtn();
 }
-function touch(h,full=true){Store.save(h);if(full){renderHunts();if(S.focus)renderFocus()}}
+/* Update numbers in place so the button under your thumb is never replaced mid-tap. */
+function updateFocus(){
+  const root=$('#focusRoot');const h=cur();
+  if(!S.focus||!h||!root.firstChild){renderFocus();return}
+  if(root.dataset.key!==[h.id,h.status,h.step||1,h.method,h.game].join('|')){renderFocus();return}
+  const o=huntOdds(h),c=h.count||0;
+  const fc=$('#fcount');if(fc)fc.textContent=num(c);
+  if(o.p&&!o.target){const cp=cum(o.p,c);const fp=$('#fpct');if(fp)fp.textContent=pct(cp);const fb=$('#fbar');if(fb)fb.style.width=(cp*100).toFixed(2)+'%'}
+  const ch=$('#fchainv');if(ch)ch.textContent=h.chain||0;
+  const ft=$('#ftimer');if(ft)ft.textContent=h.runningSince?'Pause timer':'Start timer';
+}
+function wireUpBtn(){
+  const b=$('#upBtn');if(!b)return;
+  let skipClick=false;
+  const press=()=>{const h=cur();if(!h)return;bump(h.step||1)};
+  b.addEventListener('pointerdown',e=>{
+    if(e.button!==0||b.disabled)return;
+    e.preventDefault();skipClick=true;b.classList.add('down');press();
+  });
+  const up=()=>b.classList.remove('down');
+  b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('pointerleave',up);
+  b.addEventListener('click',e=>{e.preventDefault();if(skipClick){skipClick=false;return}press()}); // keyboard Enter/Space
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+}
+function touch(h,full=true){Store.save(h);if(full){renderHunts();if(S.focus)updateFocus()}}
 function bump(n){
   const h=cur();if(!h||h.status==='complete')return;
   h.count=Math.max(0,(h.count||0)+n);
