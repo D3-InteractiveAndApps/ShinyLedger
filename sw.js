@@ -1,9 +1,7 @@
 // Shiny Ledger service worker: the app opens and counts with no signal.
 // Bump VERSION whenever you deploy so phones pick up the new files.
-const VERSION = 'shiny-ledger-v6';
-const SHELL = ['./','index.html','config.js','manifest.webmanifest?v=2','vendor/supabase.js','vendor/591.supabase.js',
-  'icons/icon-192-v2.png','icons/icon-512-v2.png','icons/maskable-512-v2.png','icons/apple-touch-icon-v2.png',
-  'icons/favicon-16-v2.png','icons/favicon-32-v2.png','icons/favicon-64-v2.png','icons/favicon-v2.svg','favicon-v2.ico'];
+const VERSION = 'shiny-ledger-v7';
+const SHELL = ['./','index.html','config.js','vendor/supabase.js','vendor/591.supabase.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
@@ -15,6 +13,9 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // Icons and the manifest always come straight from the site. iOS reads these when
+  // you tap Add to Home Screen, and it can fail if a service worker answers instead.
+  if (/\/icons\/|apple-touch-icon|favicon|\.webmanifest/.test(url.pathname)) return;
   // Never cache Supabase API or auth traffic.
   if (url.hostname.endsWith('supabase.co') || url.hostname.endsWith('supabase.in')) return;
   // App pages and config: network first so updates land, cache when offline.
