@@ -1,11 +1,12 @@
 // Shiny Ledger service worker: the app opens and counts with no signal.
 // Bump VERSION whenever you deploy so phones pick up the new files.
-const VERSION = 'shiny-ledger-v5';
-const SHELL = ['./','index.html','config.js','manifest.webmanifest','vendor/supabase.js','vendor/591.supabase.js',
-  'icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','icons/apple-touch-icon.png','icons/favicon-64.png','icons/favicon-32.png','icons/favicon-16.png','icons/favicon.svg','favicon.ico'];
+const VERSION = 'shiny-ledger-v6';
+const SHELL = ['./','index.html','config.js','manifest.webmanifest?v=2','vendor/supabase.js','vendor/591.supabase.js',
+  'icons/icon-192-v2.png','icons/icon-512-v2.png','icons/maskable-512-v2.png','icons/apple-touch-icon-v2.png',
+  'icons/favicon-16-v2.png','icons/favicon-32-v2.png','icons/favicon-64-v2.png','icons/favicon-v2.svg','favicon-v2.ico'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
