@@ -1,7 +1,7 @@
 // Shiny Ledger service worker: the app opens and counts with no signal.
 // Bump VERSION whenever you deploy so phones pick up the new files.
-const VERSION = 'shiny-ledger-v7';
-const SHELL = ['./','index.html','config.js','vendor/supabase.js','vendor/591.supabase.js'];
+const VERSION = 'shiny-ledger-v8';
+const SHELL = ['./','index.html','config.js','supabase.js','591.supabase.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
@@ -15,7 +15,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   // Icons and the manifest always come straight from the site. iOS reads these when
   // you tap Add to Home Screen, and it can fail if a service worker answers instead.
-  if (/\/icons\/|apple-touch-icon|favicon|\.webmanifest/.test(url.pathname)) return;
+  if (/\.(png|ico|svg)$|\.webmanifest$/.test(url.pathname)) return;
   // Never cache Supabase API or auth traffic.
   if (url.hostname.endsWith('supabase.co') || url.hostname.endsWith('supabase.in')) return;
   // App pages and config: network first so updates land, cache when offline.
