@@ -229,6 +229,13 @@ tr.hit td{background:color-mix(in srgb,var(--spark) 14%,transparent)}
 .sw .card{border-radius:6px;padding:7px 8px;display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
 .sw .n{font-weight:600;font-size:.82rem;padding:8px 10px;border-top:1px solid var(--line);color:var(--ink);background:var(--panel)}
 .note{font-size:.84rem;color:var(--muted);max-width:75ch}
+.site{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);display:grid;gap:8px;font-size:.82rem;color:var(--muted)}
+.site .links{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+.site .links b{color:var(--ink);font-family:var(--font-display);font-size:calc(.95rem * var(--dscale))}
+.site a,.site button.lnk{color:var(--ink);text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 30%,transparent);text-underline-offset:3px}
+button.lnk{background:none;border:0;padding:0;font:inherit;cursor:pointer}
+.site .legal{font-size:.74rem;max-width:80ch}
+.pv p{margin:0}.pv ul{margin:0;padding-left:18px;font-size:.88rem;color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:.88rem;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 
 /* ---------- touch & phone ---------- */
@@ -297,7 +304,7 @@ button,a,.count,.tap{touch-action:manipulation;-webkit-tap-highlight-color:trans
   .mbar .plus{font-size:1.35rem;font-family:var(--font-display);display:flex;align-items:center;justify-content:center;gap:10px}
   .mbar .plus small{font-family:var(--font-mono);font-size:.82rem;opacity:.85;font-weight:500}
   /* modal as full sheet */
-  .scrim{padding:0;place-items:end stretch}
+  .scrim{padding:0;place-items:start stretch}
   .modal{width:100%;min-height:100%;border-radius:0;border:0;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));align-content:start}
   .modal .actions{position:sticky;bottom:0;background:var(--panel);padding-top:10px;margin-bottom:-4px;border-top:1px solid var(--line)}
   .modal .actions .btn{flex:1}
@@ -370,6 +377,7 @@ button,a,.count,.tap{touch-action:manipulation;-webkit-tap-highlight-color:trans
   <section id="tab-rng" class="page" hidden></section>
   <section id="tab-guide" class="page" hidden></section>
   <section id="tab-themes" class="page" hidden></section>
+  <footer class="site" id="siteFoot"></footer>
 </main>
 <div id="focusRoot"></div>
 <div id="modalRoot"></div>
@@ -1012,6 +1020,7 @@ document.addEventListener('click',e=>{
     case 'gotoRng':setTab('rng');break;
     case 'sheet':S.sheet=true;renderHunts();break;
     case 'account':S.sheet=false;renderHunts();openAccount();break;
+    case 'privacy':S.sheet=false;openPrivacy();break;
     case 'sheetclose':S.sheet=false;renderHunts();break;
     case 'focus':openFocus();break;
     case 'focusclose':closeFocus();break;
@@ -1462,7 +1471,7 @@ function openAccount(){
   const root=$('#modalRoot');
   const u=Store.user;
   let body;
-  if(!sb){const c=window.SHINY_CONFIG||{};const why=!(c.supabaseUrl&&c.supabaseAnonKey)?'<b>config.js</b> doesn\'t have a Supabase URL and anon key yet. Add them, push to GitHub, then reopen the app.':!window.supabase?'The sync library (supabase.js) didn\'t load. Check that the vendor folder is in your repo.':'Sync could not start.';body=`<p class="note" style="margin:0">Sign-in isn't available, so hunts are saved on this device only.</p><p class="note" style="margin:0">${why}</p>`}
+  if(!sb){const c=window.SHINY_CONFIG||{};const why=!(c.supabaseUrl&&c.supabaseAnonKey)?'<b>config.js</b> doesn\'t have a Supabase URL and anon key yet. Add them, push to GitHub, then reopen the app.':!window.supabase?'The sync library (supabase.js) didn\'t load. Check that supabase.js is in your repo next to index.html.':'Sync could not start.';body=`<p class="note" style="margin:0">Sign-in isn't available, so hunts are saved on this device only.</p><p class="note" style="margin:0">${why}</p>`}
   else if(u){body=`<div class="kv" style="grid-template-columns:auto 1fr"><span class="muted">Signed in as</span><span style="text-align:right;overflow-wrap:anywhere">${esc(u.email||'')}</span><span class="muted">Status</span><span style="text-align:right">${esc(SYNC_LABEL[Store.status])}</span><span class="muted">Waiting to upload</span><span class="mono" style="text-align:right">${Store.outbox.size}</span></div>
       <div class="row"><button class="btn primary" type="button" id="acSync">Sync now</button><button class="btn ghost danger" type="button" id="acOut">Sign out</button></div>`}
   else{body=`<p class="note" style="margin:0">Sign in to keep your hunts in step across your phone and computer. No password: we email you a code.</p>
@@ -1473,9 +1482,11 @@ function openAccount(){
     <div class="row" style="justify-content:space-between"><h2 id="acT">Account & app</h2><button class="btn ghost" type="button" id="acClose">Close</button></div>
     ${body}
     <div class="eyebrow">Home screen app</div>${installBlock()}
+    <div class="row" style="justify-content:space-between"><button class="lnk note" type="button" id="acPriv" style="margin:0;text-decoration:underline">Privacy & your data</button>${D3.feedback?`<a class="note" href="${D3.feedback}" target="_blank" rel="noopener" style="margin:0">Report a bug</a>`:''}</div>
   </div></div>`;
   const close=()=>{root.innerHTML=''};
   $('#acClose').onclick=close;
+  $('#acPriv').onclick=()=>openPrivacy();
   $('#acScrim').addEventListener('click',e=>{if(e.target.id==='acScrim')close()});
   const msg=t=>{const m=$('#acMsg');if(m)m.textContent=t};
   const ins=$('#acInstall');if(ins)ins.onclick=async()=>{const e=installEvt;installEvt=null;try{e.prompt();await e.userChoice}catch(x){}openAccount()};
@@ -1501,6 +1512,65 @@ function openAccount(){
 }
 document.addEventListener('click',e=>{if(e.target.closest('#syncBtn'))openAccount()});
 
+/* ============ credits, feedback, privacy ============ */
+const D3=Object.assign({
+  itch:'https://d3-appsandinteractive.itch.io/',
+  github:'https://github.com/D3-InteractiveAndApps',
+  gumroad:'https://d3appsandinteractive.gumroad.com/',
+  feedback:'https://d3-appsandinteractive.itch.io/shiny-ledger#comments'
+},(window.SHINY_CONFIG||{}).links||{});
+const DISCLAIMER='Fan-made tool. Not affiliated with, endorsed or sponsored by Nintendo, Game Freak, Creatures Inc. or The Pokémon Company. Pokémon and Pokémon names are trademarks of their respective owners.';
+function renderFooter(){
+  const ext=(href,t)=>`<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
+  $('#siteFoot').innerHTML=`<div class="links"><b>Shiny Ledger</b><span>by D3 Apps & Interactive</span>
+    ${D3.itch?ext(D3.itch,'itch.io'):''}
+    ${D3.github?ext(D3.github,'GitHub'):''}
+    ${D3.gumroad?ext(D3.gumroad,'Gumroad'):''}
+    ${D3.feedback?ext(D3.feedback,'Report a bug or wrong data'):''}
+    <button class="lnk" type="button" data-act="privacy">Privacy & your data</button></div>
+    <p class="legal" style="margin:0">${DISCLAIMER}</p>`;
+}
+function openPrivacy(){
+  const root=$('#modalRoot');const u=Store.user;
+  root.innerHTML=`<div class="scrim" id="pvScrim"><div class="panel pad modal pv" role="dialog" aria-modal="true" aria-labelledby="pvT">
+    <div class="row" style="justify-content:space-between"><h2 id="pvT">Privacy & your data</h2><button class="btn ghost" type="button" id="pvClose">Close</button></div>
+    <p class="note">Shiny Ledger stores only what it needs to track your hunts:</p>
+    <ul><li>Your hunts: targets, games, methods, counts, phases, notes and dates.</li>
+      <li>Your chosen theme.</li>
+      <li>If you sign in: your email address, used only to send sign-in codes.</li></ul>
+    <p class="note">Without signing in, everything stays in this browser. With sign-in, hunts are also stored in a private database (Supabase) that only your account can read. Nothing is sold or shared, and there are no ads or trackers. Fonts load from Google Fonts.</p>
+    <div class="eyebrow">Delete your data</div>
+    ${u?`<p class="note">Permanently deletes your account, email address and every hunt from the cloud and from this device. This can't be undone.</p>
+      <button class="btn danger" type="button" id="pvDelAcct">Delete my account and hunts</button>`
+      :`<p class="note">Removes every hunt saved in this browser. ${sb?'If you also signed in on another device, sign in here first to delete your cloud data.':''}</p>
+      <button class="btn danger" type="button" id="pvDelLocal">Delete hunts on this device</button>`}
+    <p class="note" id="pvMsg" aria-live="polite"></p>
+    <p class="note" style="font-size:.74rem">${DISCLAIMER}</p>
+  </div></div>`;
+  const close=()=>{root.innerHTML=''};
+  $('#pvClose').onclick=close;
+  $('#pvScrim').addEventListener('click',e=>{if(e.target.id==='pvScrim')close()});
+  const arm=(btn,fn,label)=>btn.addEventListener('click',async()=>{
+    if(!btn.dataset.armed){btn.dataset.armed='1';btn.classList.add('armed');btn.textContent=label;setTimeout(()=>{if(btn.isConnected&&!btn.disabled){delete btn.dataset.armed;btn.classList.remove('armed');btn.textContent=btn.dataset.orig}},5000);return}
+    btn.disabled=true;await fn();
+  });
+  const d1=$('#pvDelAcct'),d2=$('#pvDelLocal');
+  if(d1){d1.dataset.orig=d1.textContent;arm(d1,async()=>{
+    $('#pvMsg').textContent='Deleting…';
+    const {error}=await sb.rpc('delete_my_account');
+    if(error){d1.disabled=false;$('#pvMsg').textContent='Could not delete your account: '+(error.message||'unknown error')+'. Check your connection and try again.';return}
+    wipeLocal();try{await sb.auth.signOut()}catch(e){}
+    close();toast('Your account and hunts were deleted.');
+  },'Tap again to delete everything')}
+  if(d2){d2.dataset.orig=d2.textContent;arm(d2,async()=>{wipeLocal();close();toast('Hunts on this device were deleted.')},'Tap again to delete')}
+}
+function wipeLocal(){
+  [LS_HUNTS,LS_OUT,LS_TOMB,LS_OWNER].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  Store.outbox.clear();Store.tombs.clear();
+  S.hunts=new Map();exampleHunts().forEach(h=>S.hunts.set(h.id,h));S.examples=true;S.sel=pickDefault();
+  if(S.focus)closeFocus();renderHunts();
+}
+
 /* ============ boot ============ */
 (function boot(){
   const sel=$('#skinSel');
@@ -1516,7 +1586,7 @@ document.addEventListener('click',e=>{if(e.target.closest('#syncBtn'))openAccoun
   const ui=lsGet(LS_UI);if(ui&&ui.wake){Wake.want=true;Wake.on()}const okTabs=['hunts','odds','rng','guide','themes'];
   const hashTab=(location.hash||'').slice(1);
   setTab(okTabs.includes(hashTab)?hashTab:(ui&&okTabs.includes(ui.tab)?ui.tab:'hunts'));
-  renderSync();
+  renderSync();renderFooter();
   Store.connect();
   if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 })();

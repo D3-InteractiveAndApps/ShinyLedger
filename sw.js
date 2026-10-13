@@ -1,6 +1,6 @@
 // Shiny Ledger service worker: the app opens and counts with no signal.
 // Bump VERSION whenever you deploy so phones pick up the new files.
-const VERSION = 'shiny-ledger-v8';
+const VERSION = 'shiny-ledger-v12';
 const SHELL = ['./','index.html','config.js','supabase.js','591.supabase.js'];
 
 self.addEventListener('install', e => {
