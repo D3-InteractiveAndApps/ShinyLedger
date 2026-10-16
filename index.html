@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Track shiny hunts for every Pokémon game, with live odds, RNG tools and themes.">
+<meta name="description" content="Track shiny hunts in the main-series Pokémon games, from Gold & Silver to Legends: Z-A, with live odds, RNG tools and themes.">
 <meta name="theme-color" content="#16181d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -158,8 +158,8 @@ textarea{resize:vertical}
 .live{display:grid;gap:6px}
 .livepct{font-family:var(--font-display);font-size:calc(2rem * var(--dscale));font-weight:700;color:var(--spark);font-variant-numeric:tabular-nums;line-height:1.1}
 .oddsbig{font-family:var(--font-mono);font-size:1.7rem;font-weight:600}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.88rem}
-.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;font-size:.88rem}
+.kv dt{color:var(--muted)} .kv dd{white-space:nowrap;margin:0;font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
 .track{width:100%;height:auto;display:block}
 .track .area{fill:color-mix(in srgb,var(--accent) 14%,transparent)}
 .track .curve{fill:none;stroke:var(--accent);stroke-width:2}
@@ -235,6 +235,15 @@ tr.hit td{background:color-mix(in srgb,var(--spark) 14%,transparent)}
 .site a,.site button.lnk{color:var(--ink);text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 30%,transparent);text-underline-offset:3px}
 button.lnk{background:none;border:0;padding:0;font:inherit;cursor:pointer}
 .site .legal{font-size:.74rem;max-width:80ch}
+.lockwarn{display:grid;gap:2px;padding:10px 12px;border-radius:9px;border:1px solid var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--panel));font-size:.85rem;color:var(--ink)}
+.lockwarn b{color:var(--bad)}
+.lockwarn[data-level="gift"],.lockwarn[data-level="check"]{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
+.lockwarn[data-level="gift"] b,.lockwarn[data-level="check"] b{color:var(--warn)}
+.pill.lock-locked{color:var(--bad);border-color:var(--bad)}
+.pill.lock-gift,.pill.lock-check{color:var(--warn);border-color:var(--warn)}
+.lockline b{color:var(--bad)}
+.shimg{display:grid;place-items:center;min-height:200px;background:var(--panel2);border-radius:12px;padding:10px}
+.shimg img{max-width:100%;max-height:58vh;width:auto;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
 .pv p{margin:0}.pv ul{margin:0;padding-left:18px;font-size:.88rem;color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:.88rem;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 
@@ -401,6 +410,7 @@ function fmtDen(p){if(!p||p<=0)return '—';if(p>=1)return '1/1';const d=1/p;ret
 function pct(x){if(x>=.9995)return '99.9%+';return (x*100).toFixed(x<.1?2:1)+'%'}
 function cum(p,n){return p?1-Math.pow(1-p,n):0}
 function needFor(p,q){return p? Math.ceil(Math.log(1-q)/Math.log(1-p)):Infinity}
+function fmtDur(ms){const m=Math.max(1,Math.round(ms/60000));if(m<60)return m+'m';const h=Math.floor(m/60),r=m%60;return h<48?h+'h'+(r?' '+r+'m':''):Math.round(h/24)+' days'}
 function fmtTime(ms){ms=Math.max(0,ms|0);const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;return (h?h+':':'')+String(m).padStart(h?2:1,'0')+':'+String(ss).padStart(2,'0')}
 
 /* ============ game data ============ */
@@ -431,6 +441,17 @@ const DEX={keys:DEXRAW.keys,names:DEXRAW.names.split('|'),masks:DEXRAW.masks.spl
 function dexAvail(id,gk){if(!gk||!id)return true;const b=DEX.keys.indexOf(gk);return b<0||((DEX.masks[id-1]>>b)&1)===1}
 function dexFind(name){const n=String(name||'').trim().toLowerCase();const i=DEX.names.findIndex(x=>x.toLowerCase()===n);return i<0?null:i+1}
 const dexNo=id=>'#'+String(id).padStart(4,'0');
+/* Shiny locks. 'locked' = can never be shiny in that game. 'gift' = the gift/story copy is locked
+   but wild or bred ones can be shiny. 'check' = most static legendaries in that game are locked. */
+const LOCKS={"legend":[144,145,146,150,151,243,244,245,249,250,251,377,378,379,380,381,382,383,384,385,386,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,638,639,640,641,642,643,644,645,646,647,648,649,716,717,718,719,720,721,772,773,785,786,787,788,789,790,791,792,800,801,802,807,808,809,888,889,890,891,892,893,894,895,896,897,898,905,1001,1002,1003,1004,1007,1008,1014,1015,1016,1017,1024,1025],"games":{"bw":{"locked":[494,643,644]},"b2w2":{"locked":[643,644]},"xy":{"locked":[716,717]},"oras":{"locked":[384,386]},"sm":{"locked":[718,772,785,786,787,788,789,791,792,800]},"usum":{"locked":[718,772,785,786,787,788,789,791,792,800,803]},"lgpe":{"gift":[25,133],"giftNote":"Your partner Pikachu or Eevee can never be shiny. Wild ones can."},"swsh":{"locked":[772,888,889,890,891,892,898],"check":true},"bdsp":{"locked":[483,484]},"pla":{"locked":[144,145,146,150,151,155,243,244,245,249,250,251,377,378,379,380,381,382,383,384,385,386,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,501,638,639,640,641,642,643,644,645,646,647,648,649,716,717,718,719,720,721,722,772,773,785,786,787,788,789,790,791,792,800,801,802,807,808,809,888,889,890,891,892,893,894,895,896,897,898,905,1001,1002,1003,1004,1007,1008,1014,1015,1016,1017,1024,1025],"note":"Legends: Arceus never makes legendary, mythical or story Pok\u00e9mon shiny, including the gift starters."},"sv":{"locked":[1001,1002,1003,1004,1007,1008,1009,1010,1014,1015,1016,1017,1020,1021,1022,1023,1024,1025],"gift":[906,909,912],"giftNote":"The gift starter is shiny-locked, but bred ones can be shiny (Masuda Method works).","check":true},"za":{"locked":[382,383,384,491,716,717,718,720],"gift":[152,158,498,999],"giftNote":"The gift or story one is shiny-locked, but wild ones appear after the story and can be shiny.","check":true,"except":[380,381,638,639,640]}}};
+const LEGEND=new Set(LOCKS.legend);
+function shinyLock(id,gk){
+  const L=LOCKS.games[gk];if(!L||!id)return null;
+  if(L.locked&&L.locked.includes(id))return {level:'locked',msg:L.note||'This Pokémon can never be shiny in this game.'};
+  if(L.gift&&L.gift.includes(id))return {level:'gift',msg:L.giftNote||'The gift copy is shiny-locked; wild ones can be shiny.'};
+  if(L.check&&LEGEND.has(id)&&!(L.except||[]).includes(id))return {level:'check',msg:'Most legendary and mythical Pokémon in this game are shiny-locked. Check before you start a long hunt.'};
+  return null;
+}
 const RNG_GAMES=['gsc','rse','frlg','colxd','dppt','hgss','bw','b2w2','xy','oras','sm','usum','lgpe','swsh','bdsp','pla','sv'];
 const ENC=['Random wild (grass / cave)','Surfing','Fishing','Static / legendary','Gift Pokémon','Egg / breeding','Fossil revival','Roaming','Horde','SOS call','Overworld symbol','Mass outbreak','Massive mass outbreak','Swarm','Headbutt / Rock Smash','Honey tree','Poké Radar patch','DexNav','Friend Safari','Hidden Grotto','Max Raid','Tera Raid','Dynamax Adventure','Ultra Wormhole','Grand Underground','Wild Zone respawn','Hyperspace','In-game trade','Event / distribution','Other'];
 
@@ -586,29 +607,34 @@ function persistLocal(){lsSet(LS_HUNTS,[...S.hunts.values()].filter(h=>!h.exampl
 function realHunts(){return [...S.hunts.values()].filter(h=>!h.example)}
 function plain(h){return JSON.parse(JSON.stringify(h))}
 
-/* ============ cloud sync (Supabase) — offline-first ============
-   Every change is written to this device first, queued in an outbox,
-   and pushed to Supabase when signed in and online. Deletes are soft
-   (deleted=true) so other devices learn about them. Last write wins,
-   compared by each hunt's own `updated` timestamp. */
+/* ============ cloud sync (Supabase), offline-first ============
+   Every change is saved on this device first, queued, and pushed when online.
+   Counts and chains merge by ADDING each device's changes on the server
+   (sync_hunt function), so counting on two devices never loses encounters.
+   "Set count" and "chain broke" are absolute and replace the value instead.
+   Other fields (notes, status, method…) keep the most recent edit. */
 const CFG=window.SHINY_CONFIG||{};
 const sb=(CFG.supabaseUrl&&CFG.supabaseAnonKey&&window.supabase)?window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'shinyledger.auth'}}):null;
-const LS_OUT='shinyledger.outbox', LS_TOMB='shinyledger.tombs', LS_OWNER='shinyledger.owner';
+const LS_OUT='shinyledger.outbox', LS_TOMB='shinyledger.tombs', LS_OWNER='shinyledger.owner', LS_BASE='shinyledger.base', LS_SETS='shinyledger.sets';
+const CTR=['count','chain'];
 
 const Store={
-  mode:'local',user:null,channel:null,timer:null,busy:false,again:false,status:'local',
+  mode:'local',user:null,channel:null,timer:null,busy:false,again:false,status:'local',noRpc:false,seen:{},
   outbox:new Set(lsGet(LS_OUT)||[]),
   tombs:new Set(lsGet(LS_TOMB)||[]),
-  saveOut(){lsSet(LS_OUT,[...this.outbox]);lsSet(LS_TOMB,[...this.tombs])},
+  base:lsGet(LS_BASE)||{},   // id -> {count,chain} last values confirmed by the server
+  sets:lsGet(LS_SETS)||{},   // id -> {count:v#,chain:v#} absolute changes not yet sent
+  saveOut(){lsSet(LS_OUT,[...this.outbox]);lsSet(LS_TOMB,[...this.tombs]);lsSet(LS_BASE,this.base);lsSet(LS_SETS,this.sets)},
   setStatus(st){this.status=st;renderSync()},
+  markSet(h,field){if(!h||h.example)return;const s=this.sets[h.id]=this.sets[h.id]||{};s[field]=(s[field]||0)+1},
   async connect(){
     if(!sb){this.setStatus('local');return}
     this.setStatus('signedout');
     try{const {data}=await sb.auth.getSession();await this.onSession(data.session)}catch(e){this.setStatus('error')}
     sb.auth.onAuthStateChange((_ev,session)=>{setTimeout(()=>this.onSession(session),0)});
-    window.addEventListener('online',()=>{if(this.user){this.flush();this.pull()}});
+    window.addEventListener('online',()=>{if(this.user){this.flush().then(()=>this.pull())}});
     window.addEventListener('offline',()=>{if(this.user)this.setStatus('offline')});
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&this.user){this.flush();this.pull()}});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&this.user){this.flush().then(()=>this.pull())}});
   },
   async onSession(session){
     const u=session&&session.user||null;
@@ -620,7 +646,7 @@ const Store={
     const prev=lsGet(LS_OWNER);
     if(prev&&prev!==u.id){
       // A different account used this device before: its hunts already live in its cloud. Start clean.
-      S.hunts=new Map();this.outbox.clear();this.tombs.clear();persistLocal();
+      S.hunts=new Map();this.outbox.clear();this.tombs.clear();this.base={};this.sets={};persistLocal();
     }else if(prev!==u.id){
       // Guest hunts on this device: upload them to the new account.
       realHunts().forEach(h=>this.outbox.add(h.id));
@@ -628,22 +654,37 @@ const Store={
     lsSet(LS_OWNER,u.id);this.saveOut();
     await this.flush();await this.pull();this.subscribe();this.loadProfile();renderHunts();
   },
+  /* Combine a server copy with this device's copy without losing unsent counts. */
+  merge(loc,remote,dirty){
+    const id=remote.id,b=this.base[id],st=this.sets[id]||{};
+    let out;
+    if(loc&&dirty){
+      out=Object.assign({},(loc.updated||0)>=(remote.updated||0)?loc:remote);
+      for(const f of CTR){
+        if(st[f]||!b)out[f]=loc[f]||0;                                   // absolute change or never synced: keep ours
+        else out[f]=Math.max(0,(remote[f]||0)+((loc[f]||0)-(b[f]||0)));  // server value + our unsent additions
+      }
+    }else out=Object.assign({},remote);
+    this.base[id]={count:remote.count||0,chain:remote.chain||0};
+    return out;
+  },
+  fresh(row){const t=Date.parse(row.updated_at||'')||0;if(t&&this.seen[row.id]&&t<this.seen[row.id])return false;if(t)this.seen[row.id]=t;return true},
   async pull(){
     if(!this.user)return;
     if(!navigator.onLine){this.setStatus('offline');return}
-    const {data,error}=await sb.from('hunts').select('id,data,deleted');
+    const {data,error}=await sb.from('hunts').select('id,data,deleted,updated_at');
     if(error){this.setStatus('error');return}
     const local=new Map(realHunts().map(h=>[h.id,h]));
     const next=new Map();
     for(const row of data){
+      this.fresh(row);
       const loc=local.get(row.id),dirty=this.outbox.has(row.id);
-      if(row.deleted){if(dirty&&loc&&!this.tombs.has(row.id))next.set(row.id,loc);continue}
+      if(row.deleted){delete this.base[row.id];continue}
       if(this.tombs.has(row.id))continue;
-      const remote=row.data||{};
-      next.set(row.id,(loc&&dirty&&(loc.updated||0)>=(remote.updated||0))?loc:remote);
+      next.set(row.id,this.merge(loc,Object.assign({id:row.id},row.data||{}),dirty));
     }
     for(const [id,h] of local){if(!next.has(id)&&this.outbox.has(id)&&!this.tombs.has(id))next.set(id,h)}
-    setHunts(next);
+    this.saveOut();setHunts(next);
     this.setStatus(this.outbox.size?'saving':'synced');
   },
   subscribe(){
@@ -653,14 +694,13 @@ const Store={
       .subscribe();
   },
   onRemote(row){
-    if(!row||!row.id)return;
+    if(!row||!row.id||!this.fresh(row))return;
     const loc=S.hunts.get(row.id),dirty=this.outbox.has(row.id);
-    if(row.deleted){if(dirty)return;if(loc){S.hunts.delete(row.id);if(S.sel===row.id)S.sel=pickDefault();afterRemote()}return}
-    const r=row.data||{};
-    if(loc&&(loc.updated||0)>=(r.updated||0))return; // our own echo or older
-    if(dirty)return;
+    if(row.deleted){delete this.base[row.id];this.saveOut();if(loc){S.hunts.delete(row.id);if(S.sel===row.id)S.sel=pickDefault();afterRemote()}return}
+    if(this.tombs.has(row.id))return;
     if(S.examples)clearExamples();
-    S.hunts.set(row.id,r);if(!S.sel)S.sel=row.id;afterRemote();
+    S.hunts.set(row.id,this.merge(loc,Object.assign({id:row.id},row.data||{}),dirty));this.saveOut();
+    if(!S.sel)S.sel=row.id;afterRemote();
   },
   save(h,now){
     if(!h||h.example)return;
@@ -671,30 +711,69 @@ const Store={
     clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush(),now?0:700);
   },
   remove(id){
-    this.tombs.add(id);this.outbox.add(id);this.saveOut();persistLocal();
+    this.tombs.add(id);this.outbox.add(id);delete this.sets[id];this.saveOut();persistLocal();
     if(this.user){clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush(),0)}
+  },
+  async sendOne(id){
+    if(this.tombs.has(id)){
+      const r=await this.rpc({p_id:id,p_data:{},p_deleted:true});
+      if(r.error)return false;
+      this.tombs.delete(id);this.outbox.delete(id);delete this.base[id];return true;
+    }
+    const h=S.hunts.get(id);if(!h||h.example){this.outbox.delete(id);return true}
+    const b=this.base[id],st=Object.assign({},this.sets[id]||{});
+    const sent={updated:h.updated,count:h.count||0,chain:h.chain||0};
+    const args={p_id:id,p_data:plain(h),p_deleted:false};
+    for(const f of CTR){
+      const abs=!!st[f]||!b;
+      args['p_set_'+f]=abs;
+      args['p_'+f+'_delta']=abs?0:(sent[f]-(b[f]||0));
+    }
+    const r=await this.rpc(args);
+    if(r.error)return false;
+    const res=r.data||{};
+    if(res.deleted){S.hunts.delete(id);this.outbox.delete(id);delete this.base[id];delete this.sets[id];if(S.sel===id)S.sel=pickDefault();return true}
+    const srv=res.data||plain(h),cur=S.hunts.get(id);
+    this.base[id]={count:srv.count||0,chain:srv.chain||0};
+    const cs=this.sets[id]||{};
+    for(const f of CTR)if((cs[f]||0)===(st[f]||0))delete cs[f];
+    if(!Object.keys(cs).length)delete this.sets[id];
+    if(cur){
+      const untouched=cur.updated===sent.updated;
+      const merged=untouched?Object.assign({},srv):cur;
+      for(const f of CTR)merged[f]=Math.max(0,(srv[f]||0)+((cur[f]||0)-sent[f]));
+      if(untouched)merged.updated=cur.updated;
+      S.hunts.set(id,merged);
+      if(untouched)this.outbox.delete(id);
+    }else this.outbox.delete(id);
+    return true;
+  },
+  /* sync_hunt merges counts on the server. If the database hasn't been updated yet,
+     fall back to the older whole-hunt save so nothing breaks. */
+  async rpc(args){
+    if(!this.noRpc){
+      const r=await sb.rpc('sync_hunt',args);
+      if(!r.error)return r;
+      const msg=(r.error.message||'')+(r.error.code||'');
+      if(!/sync_hunt|PGRST202|42883|function/i.test(msg))return r;
+      this.noRpc=true;
+    }
+    const row={id:args.p_id,user_id:this.user.id,data:args.p_data,deleted:!!args.p_deleted,updated_at:new Date().toISOString()};
+    const {error}=await sb.from('hunts').upsert([row],{onConflict:'id'});
+    return error?{error}:{data:{data:args.p_data,deleted:!!args.p_deleted}};
   },
   async flush(){
     if(!this.user||!this.outbox.size)return;
     if(!navigator.onLine){this.setStatus('offline');return}
     if(this.busy){this.again=true;return}
     this.busy=true;this.setStatus('saving');
-    const ids=[...this.outbox],sent={};
-    const rows=ids.map(id=>{
-      if(this.tombs.has(id))return {id,user_id:this.user.id,data:{},deleted:true,updated_at:new Date().toISOString()};
-      const h=S.hunts.get(id);if(!h||h.example)return null;
-      sent[id]=h.updated||0;
-      return {id,user_id:this.user.id,data:plain(h),deleted:false,updated_at:new Date(h.updated||Date.now()).toISOString()};
-    }).filter(Boolean);
     let ok=true;
-    if(rows.length){const {error}=await sb.from('hunts').upsert(rows,{onConflict:'id'});if(error)ok=false}
-    if(ok){
-      ids.forEach(id=>{const h=S.hunts.get(id);if(this.tombs.has(id)||!h||(h.updated||0)===sent[id]){this.outbox.delete(id);this.tombs.delete(id)}});
-      this.saveOut();
-    }
-    this.busy=false;this.again=false;
-    if(!ok){this.setStatus('error');return}
-    if(this.outbox.size){setTimeout(()=>this.flush(),300);return}
+    for(const id of [...this.outbox]){if(!(await this.sendOne(id))){ok=false;break}}
+    this.saveOut();persistLocal();
+    this.busy=false;
+    if(!ok){this.again=false;this.setStatus('error');return}
+    afterRemote();
+    if(this.outbox.size||this.again){this.again=false;setTimeout(()=>this.flush(),300);return}
     this.setStatus('synced');
   },
   async loadProfile(){
@@ -810,7 +889,8 @@ function renderDetail(){
   const g=GAMES[h.game],m=METHOD[h.method],o=huntOdds(h);
   const done=h.status==='complete';
   const p=o.p, c=h.count||0, cp=o.target?0:cum(p,c);
-  const live=o.target||!p?'':`<div class="live" aria-live="polite">
+  const lockLv=(shinyLock(h.species,h.game)||{}).level;
+  const live=lockLv==='locked'?`<div class="lockwarn" data-level="locked"><b>No shiny possible</b><span>${esc(h.target)} is shiny-locked in ${esc(g?g.n:'this game')}. The count still works, but odds don't apply.</span></div>`:o.target||!p?'':`<div class="live" aria-live="polite">
        <div class="livepct" id="livePct">${pct(cp)}</div>
        <div class="note" style="margin:0">of hunters at ${fmtDen(p)} would have found a shiny by encounter ${num(c)}${done?'':cp<.5?'. You are still ahead of the median.':cp<.9?'. Past the median: most hunters would have it by now.':'. Deep past odds, keep going.'}</div>
        <div class="bar"><i style="width:${(cp*100).toFixed(2)}%;background:var(--spark)"></i></div>
@@ -830,7 +910,10 @@ function renderDetail(){
       <dl class="kv">
         <dt>Encounters vs. odds</dt><dd>${(c*p).toFixed(2)}×</dd>
         <dt>50% / 90% / 99% by</dt><dd>${num(c50)} / ${num(c90)} / ${num(c99)}</dd>
+        ${(()=>{const t=huntTime(h);if(done||t<120000||c<10)return '';const rate=c/(t/3600000);const hrs=n=>fmtDur(n/rate*3600000);
+          return `<dt>50% / 90% chance at your pace</dt><dd>${hrs(c50)} / ${hrs(c90)}</dd>`})()}
       </dl>
+      ${(()=>{const lk=shinyLock(h.species,h.game);return lk&&lk.level==='locked'?`<p class="note lockline" style="margin:0"><b>Shiny-locked:</b> ${esc(lk.msg)}</p>`:''})()}
       <p class="note" style="margin:0">${done?`Found after ${num(c)} encounters. ${pct(cp)} of hunters at these odds would have found one by then.`:c>0?(cp<.5?`You're under the median. Half of hunters would still be going.`:`${pct(1-cp)} of hunters at these odds would still be looking at this count.`):`Each encounter is an independent roll; the odds never "build up".`}</p>`;
   }
   const chainBox=m&&m.chain?`<div class="chainbox">
@@ -846,7 +929,7 @@ function renderDetail(){
   return `
    <div class="dhead">
      <div>
-       <div class="row" style="gap:8px"><span class="pill ${h.status}">${{active:'Hunting',paused:'Paused',complete:'Shiny found',failed:'Failed'}[h.status]||h.status}</span>${h.example?'<span class="pill">Example</span>':''}</div>
+       <div class="row" style="gap:8px"><span class="pill ${h.status}">${{active:'Hunting',paused:'Paused',complete:'Shiny found',failed:'Failed'}[h.status]||h.status}</span>${(()=>{const lk=shinyLock(h.species,h.game);return lk?`<span class="pill lock-${lk.level}" title="${esc(lk.msg)}">${lk.level==='locked'?'Shiny-locked':lk.level==='gift'?'Gift is locked':'Check lock'}</span>`:''})()}${h.example?'<span class="pill">Example</span>':''}</div>
        <h2 style="margin-top:8px">${esc(h.target||'Untitled')}</h2>
        <div class="meta">${h.species?dexNo(h.species)+' · ':''}${esc(g?g.n:'?')} · ${esc(m?m.n:'?')} · ${esc(h.enc||'')}${h.mods&&h.mods.charm&&g.charm?' · Shiny Charm':''}</div>
      </div>
@@ -854,6 +937,7 @@ function renderDetail(){
        ${h.status==='active'?`<button class="btn" data-act="status" data-v="paused">Pause</button>`:''}
        ${h.status==='paused'||h.status==='failed'?`<button class="btn" data-act="status" data-v="active">Resume</button>`:''}
        ${done?`<button class="btn" data-act="status" data-v="active">Reopen</button>`:`<button class="btn ghost" data-act="status" data-v="failed">Mark failed</button>`}
+       ${done?`<button class="btn primary" data-act="share">Share</button>`:''}
        <button class="btn" data-act="edit">Edit</button>
        <button class="btn ghost danger" data-act="del">Delete</button>
      </div>
@@ -1005,11 +1089,11 @@ document.addEventListener('click',e=>{
     case 'new':S.sheet=false;if(S.focus)closeFocus();openForm(null);break;
     case 'edit':if(h)openForm(h);break;
     case 'bump':bump(+t.dataset.n);break;
-    case 'setcount':{const v=parseInt($('#setCount').value,10);if(h&&v>=0){h.count=v;touch(h)}break}
+    case 'setcount':{const v=parseInt($('#setCount').value,10);if(h&&v>=0){h.count=v;Store.markSet(h,'count');touch(h)}break}
     case 'chain':if(h){h.chain=Math.max(0,(h.chain||0)+(+t.dataset.n));touch(h)}break;
-    case 'chainbreak':if(h){h.chain=0;touch(h);toast('Chain reset to 0')}break;
+    case 'chainbreak':if(h){h.chain=0;Store.markSet(h,'chain');touch(h);toast('Chain reset to 0')}break;
     case 'status':if(h){h.status=t.dataset.v;if(h.status!=='complete')delete h.completed;if(h.status!=='active'&&h.runningSince){h.timeMs=huntTime(h);h.runningSince=null}touch(h)}break;
-    case 'found':if(h){h.status='complete';h.completed=Date.now();if(h.runningSince){h.timeMs=huntTime(h);h.runningSince=null}touch(h);buzz([30,60,30,60,120]);const cp=$('#counterPanel');if(cp)cp.classList.add('burst');toast('Shiny logged at '+num(h.count)+'!')}break;
+    case 'found':if(h){h.status='complete';h.completed=Date.now();if(h.runningSince){h.timeMs=huntTime(h);h.runningSince=null}touch(h);buzz([30,60,30,60,120]);const cp=$('#counterPanel');if(cp)cp.classList.add('burst');toast('Shiny logged at '+num(h.count)+'!');setTimeout(()=>openShare(h),700)}break;
     case 'timer':if(h){if(h.runningSince){h.timeMs=huntTime(h);h.runningSince=null}else h.runningSince=Date.now();touch(h)}break;
     case 'phase':{const v=$('#phaseIn').value.trim();if(h){(h.phases=h.phases||[]).push({at:h.count||0,species:v||'Unknown',date:Date.now()});touch(h)}break}
     case 'unphase':if(h){h.phases.splice(+t.dataset.i,1);touch(h)}break;
@@ -1022,6 +1106,7 @@ document.addEventListener('click',e=>{
     case 'sheet':S.sheet=true;renderHunts();break;
     case 'account':S.sheet=false;renderHunts();openAccount();break;
     case 'privacy':S.sheet=false;openPrivacy();break;
+    case 'share':openShare(h);break;
     case 'sheetclose':S.sheet=false;renderHunts();break;
     case 'focus':openFocus();break;
     case 'focusclose':closeFocus();break;
@@ -1083,6 +1168,7 @@ function openForm(h){
     </div>
     <div class="row" style="justify-content:space-between"><span class="note" id="hf_hint" style="margin:0"></span>
       <label class="check" style="font-size:.8rem"><input type="checkbox" id="hf_all" ${F.all?'checked':''}> Ignore game availability</label></div>
+    <div class="lockwarn" id="hf_lock" role="status" hidden></div>
     <div class="mods" id="hf_mods"></div>
     <div class="fgrid">
       <label class="f" for="hf_step">Encounters per tap<input id="hf_step" type="number" min="1" max="99" value="${v.step||1}"></label>
@@ -1104,6 +1190,9 @@ function openForm(h){
   const setHint=t=>{hint.textContent=t||''};
   const refresh=()=>{
     const m=METHOD[curMethod];
+    {const lk=shinyLock(F.sp,curGame),lw=$('#hf_lock');
+     if(lk&&lw){lw.hidden=false;lw.dataset.level=lk.level;lw.innerHTML=`<b>${lk.level==='locked'?'Shiny-locked in '+esc(GAMES[curGame].n):lk.level==='gift'?'Partly shiny-locked':'May be shiny-locked'}</b><span>${esc(lk.msg)}</span>`}
+     else if(lw)lw.hidden=true;}
     if(!curGame){$('#hf_mods').innerHTML='';$('#hf_prev').textContent='Choose a game to calculate odds.';$('#hf_desc').textContent='';return}
     const prev=readMods(f);
     $('#hf_mods').innerHTML=modsFields('hf',curGame,curMethod,Object.keys(prev).length?prev:v.mods);
@@ -1124,8 +1213,8 @@ function openForm(h){
     if(q&&!n)out.sort((a,b)=>(DEX.names[b-1].toLowerCase().startsWith(q)-DEX.names[a-1].toLowerCase().startsWith(q))||a-b);
     return out.slice(0,80);
   };
-  const openList=()=>{
-    F.items=search(inp.value===(F.sp&&DEX.names[F.sp-1])?'':inp.value);F.act=F.items.length?0:-1;
+  const openList=(browse)=>{
+    F.items=search(browse&&inp.value===(F.sp&&DEX.names[F.sp-1])?'':inp.value);F.act=F.items.length?0:-1;
     list.innerHTML=F.items.length?F.items.map((id,i)=>`<li role="option" id="hfo${id}" data-id="${id}" aria-selected="${i===F.act}">${esc(DEX.names[id-1])}<span class="mono muted">${dexNo(id)}</span></li>`).join(''):`<li class="none">No match${curGame&&!F.all?' in '+esc(GAMES[curGame].s):''}</li>`;
     list.hidden=false;inp.setAttribute('aria-expanded','true');
     inp.setAttribute('aria-activedescendant',F.act>=0?'hfo'+F.items[F.act]:'');
@@ -1138,10 +1227,10 @@ function openForm(h){
     else setHint(curGame?'':`${DEX.names[id-1]} is available in ${GKEYS.filter(k=>dexAvail(id,k)).length} games.`);
     fillGames();fillMethods();refresh();
   };
-  inp.addEventListener('focus',openList);
-  inp.addEventListener('input',()=>{F.sp=dexFind(inp.value);openList()});
+  inp.addEventListener('focus',()=>openList(true));
+  inp.addEventListener('input',()=>{F.sp=dexFind(inp.value);openList(false)});
   inp.addEventListener('keydown',e=>{
-    if(e.key==='ArrowDown'){e.preventDefault();list.hidden?openList():moveAct(1)}
+    if(e.key==='ArrowDown'){e.preventDefault();list.hidden?openList(true):moveAct(1)}
     else if(e.key==='ArrowUp'){e.preventDefault();moveAct(-1)}
     else if(e.key==='Enter'&&!list.hidden){e.preventDefault();if(F.act>=0)pick(F.items[F.act])}
     else if(e.key==='Escape'&&!list.hidden){e.stopPropagation();closeList()}
@@ -1170,7 +1259,7 @@ function openForm(h){
       const nh=Object.assign({id:uid(),chain:0,linkChain:!!m.chain,status:'active',phases:[],started:Date.now(),timeMs:0,runningSince:null,notes:''},data);
       S.hunts.set(nh.id,nh);S.sel=nh.id;S.filter='active';Store.save(nh,true);
     }else{
-      const hh=S.hunts.get(h.id);Object.assign(hh,data);if(!METHOD[hh.method].chain)hh.chain=0;Store.save(hh,true);
+      const hh=S.hunts.get(h.id);const oc=hh.count,och=hh.chain;Object.assign(hh,data);if(!METHOD[hh.method].chain)hh.chain=0;if(hh.count!==oc)Store.markSet(hh,'count');if((hh.chain||0)!==(och||0))Store.markSet(hh,'chain');Store.save(hh,true);
     }
     close();renderHunts();
   });
@@ -1482,12 +1571,19 @@ function openAccount(){
   root.innerHTML=`<div class="scrim" id="acScrim"><div class="panel pad modal" role="dialog" aria-modal="true" aria-labelledby="acT">
     <div class="row" style="justify-content:space-between"><h2 id="acT">Account & app</h2><button class="btn ghost" type="button" id="acClose">Close</button></div>
     ${body}
+    <div class="eyebrow">Your data</div>
+    <p class="note" style="margin:0">Keep a copy of every hunt, or move them to another device without signing in.</p>
+    <div class="row"><button class="btn" type="button" id="acExport">Download backup</button><button class="btn" type="button" id="acCsv">Download spreadsheet</button><button class="btn ghost" type="button" id="acImport">Restore from backup</button></div>
+    <input type="file" id="acFile" accept=".json,application/json" hidden>
     <div class="eyebrow">Home screen app</div>${installBlock()}
     <div class="row" style="justify-content:space-between"><button class="lnk note" type="button" id="acPriv" style="margin:0;text-decoration:underline">Privacy & your data</button>${D3.feedback?`<a class="note" href="${D3.feedback}" target="_blank" rel="noopener" style="margin:0">Report a bug</a>`:''}</div>
   </div></div>`;
   const close=()=>{root.innerHTML=''};
   $('#acClose').onclick=close;
   $('#acPriv').onclick=()=>openPrivacy();
+  $('#acExport').onclick=exportJSON;$('#acCsv').onclick=exportCSV;
+  $('#acImport').onclick=()=>$('#acFile').click();
+  $('#acFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const n=await importJSON(f);if(n!=null){root.innerHTML='';toast(n?`Restored ${n} hunt${n>1?'s':''}`:'Those hunts are already here')}};
   $('#acScrim').addEventListener('click',e=>{if(e.target.id==='acScrim')close()});
   const msg=t=>{const m=$('#acMsg');if(m)m.textContent=t};
   const ins=$('#acInstall');if(ins)ins.onclick=async()=>{const e=installEvt;installEvt=null;try{e.prompt();await e.userChoice}catch(x){}openAccount()};
@@ -1512,6 +1608,123 @@ function openAccount(){
   };
 }
 document.addEventListener('click',e=>{if(e.target.closest('#syncBtn'))openAccount()});
+
+/* ============ "Shiny found!" share image ============ */
+const SHARE_URL='d3-appsandinteractive.itch.io/shiny-ledger';
+const LOGO_SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"> <defs> <radialGradient id="bg" cx="50%" cy="42%" r="75%"><stop offset="0" stop-color="#2a2550"/><stop offset=".55" stop-color="#16152b"/><stop offset="1" stop-color="#0b0b16"/></radialGradient> <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1a8"/><stop offset=".45" stop-color="#ffd24a"/><stop offset="1" stop-color="#f29a1f"/></linearGradient> <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffd24a" stop-opacity=".45"/><stop offset="1" stop-color="#ffd24a" stop-opacity="0"/></radialGradient> </defs> <rect width="1024" height="1024" rx="230" fill="url(#bg)"/> <circle cx="512" cy="512" r="300.0" fill="url(#glow)"/> <circle cx="512" cy="512" r="330.0" fill="none" stroke="#ffffff" stroke-opacity=".12" stroke-width="58.0"/> <path d="M512.0,182.0 A330.0,330.0 0 1 1 182.0,512.0" fill="none" stroke="url(#gold)" stroke-width="58.0" stroke-linecap="round"/> <circle cx="182.0" cy="512.0" r="55.1" fill="#fff6cf"/> <path d="M512,282.0 Q541.9,482.1 742.0,512 Q541.9,541.9 512,742.0 Q482.1,541.9 282.0,512 Q482.1,482.1 512,282.0Z" fill="url(#gold)"/> <path d="M727.0,229.0 Q739.48,294.52 805.0,307.0 Q739.48,319.48 727.0,385.0 Q714.52,319.48 649.0,307.0 Q714.52,294.52 727.0,229.0Z" fill="#ffffff"/> </svg>';
+function loadImg(src){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=src})}
+function sparkPath(c,x,y,r){const q=r*0.14;c.beginPath();c.moveTo(x,y-r);c.quadraticCurveTo(x+q,y-q,x+r,y);c.quadraticCurveTo(x+q,y+q,x,y+r);c.quadraticCurveTo(x-q,y+q,x-r,y);c.quadraticCurveTo(x-q,y-q,x,y-r);c.closePath()}
+function fitText(c,t,max,size,font){let s=size;do{c.font=font.replace('{s}',s);if(c.measureText(t).width<=max)break;s-=4}while(s>24);return s}
+async function shareCard(h){
+  const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const disp='"Chakra Petch", "Arial Narrow", system-ui, sans-serif',body='"IBM Plex Sans", system-ui, -apple-system, sans-serif',mono='"IBM Plex Mono", ui-monospace, monospace';
+  try{await Promise.all(['700 80px "Chakra Petch"','600 40px "IBM Plex Sans"','500 30px "IBM Plex Mono"'].map(f=>document.fonts.load(f)))}catch(e){}
+  const g=GAMES[h.game]||{n:'',s:''},m=METHOD[h.method]||{n:''},o=huntOdds(h),c0=h.count||0;
+  // background
+  const bg=x.createRadialGradient(W*.5,H*.32,40,W*.5,H*.45,H*.85);bg.addColorStop(0,'#3a3270');bg.addColorStop(.45,'#1b1934');bg.addColorStop(1,'#0b0b16');
+  x.fillStyle=bg;x.fillRect(0,0,W,H);
+  let seed=(h.id||'x').split('').reduce((a,ch)=>a*31+ch.charCodeAt(0)>>>0,7);const rnd=()=>((seed=Math.imul(seed^seed>>>15,2246822507)>>>0)%10000)/10000;
+  for(let i=0;i<70;i++){x.globalAlpha=.15+rnd()*.35;x.fillStyle=rnd()<.3?'#ffd24a':'#e9e6fb';x.beginPath();x.arc(rnd()*W,rnd()*H,1+rnd()*2.4,0,7);x.fill()}
+  x.globalAlpha=1;
+  // glow + big sparkle
+  const gl=x.createRadialGradient(W/2,390,10,W/2,390,330);gl.addColorStop(0,'rgba(255,210,74,.45)');gl.addColorStop(1,'rgba(255,210,74,0)');x.fillStyle=gl;x.fillRect(0,40,W,700);
+  const gold=x.createLinearGradient(W/2-170,220,W/2+170,560);gold.addColorStop(0,'#fff1a8');gold.addColorStop(.45,'#ffd24a');gold.addColorStop(1,'#f29a1f');
+  x.fillStyle=gold;sparkPath(x,W/2,390,170);x.fill();
+  x.fillStyle='#ffffff';sparkPath(x,W/2+175,250,46);x.fill();sparkPath(x,W/2-200,520,26);x.globalAlpha=.8;x.fill();x.globalAlpha=1;
+  x.fillStyle='#ffd24a';sparkPath(x,W/2-230,220,22);x.fill();sparkPath(x,W/2+215,530,18);x.fill();
+  // eyebrow
+  x.textAlign='center';x.fillStyle='#ffd24a';x.font='700 34px '+mono;x.fillText('★  SHINY FOUND  ★',W/2,128);
+  // name
+  x.fillStyle='#ffffff';const ns=fitText(x,h.target||'Shiny',W-140,132,'700 {s}px '+disp);x.font='700 '+ns+'px '+disp;x.fillText(h.target||'Shiny',W/2,700);
+  x.fillStyle='#cfc9ec';x.font='500 36px '+body;
+  const sub=[g.n,m.n].filter(Boolean).join('  ·  ');const ss=fitText(x,sub,W-140,36,'500 {s}px '+body);x.font='500 '+ss+'px '+body;x.fillText(sub,W/2,762);
+  // stat panel
+  const px=90,py=830,pw=W-180,ph=300;x.fillStyle='rgba(255,255,255,.06)';x.strokeStyle='rgba(255,210,74,.45)';x.lineWidth=3;
+  x.beginPath();x.roundRect?x.roundRect(px,py,pw,ph,36):x.rect(px,py,pw,ph);x.fill();x.stroke();
+  x.fillStyle='#ffffff';x.font='700 120px '+disp;x.fillText(num(c0),W/2,py+140);
+  x.fillStyle='#cfc9ec';x.font='600 30px '+body;x.fillText(o.target?(c0===1?'attempt':'attempts'):(c0===1?'encounter':'encounters'),W/2,py+186);
+  let line='';
+  if(o.target)line='Hit with RNG manipulation';
+  else if(o.p){const cp=cum(o.p,c0);line=cp<.5?`Luckier than ${Math.round((1-cp)*100)}% of hunters  ·  odds ${fmtDen(o.p)}`:`${(c0*o.p).toFixed(1)}× past odds. Never gave up.`}
+  x.fillStyle='#ffd24a';const ls=fitText(x,line,pw-60,34,'700 {s}px '+body);x.font='700 '+ls+'px '+body;x.fillText(line,W/2,py+250);
+  // meta line
+  const t=huntTime(h),bits=[];if(t>60000)bits.push(fmtTime(t)+' hunted');if((h.phases||[]).length)bits.push(h.phases.length+' phase'+(h.phases.length>1?'s':''));
+  bits.push(new Date(h.completed||Date.now()).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}));
+  x.fillStyle='#a9a3cc';x.font='500 30px '+body;x.fillText(bits.join('  ·  '),W/2,py+ph+62);
+  // footer
+  x.fillStyle='rgba(0,0,0,.28)';x.fillRect(0,H-130,W,130);
+  try{const li=await loadImg('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(LOGO_SVG));x.drawImage(li,70,H-108,86,86)}catch(e){}
+  x.textAlign='left';x.fillStyle='#ffffff';x.font='700 44px '+disp;x.fillText('Shiny',176,H-58);const sw=x.measureText('Shiny ').width;x.fillStyle='#ffd24a';x.fillText('Ledger',176+sw,H-58);
+  x.fillStyle='#cfc9ec';x.font='500 25px '+mono;x.fillText(SHARE_URL,176,H-22);
+  x.textAlign='right';x.fillStyle='#ffd24a';x.font='700 24px '+mono;x.fillText('FREE',W-70,H-46);
+  return new Promise(r=>c.toBlob(r,'image/png'));
+}
+async function openShare(h){
+  if(!h)return;if(S.focus)closeFocus();
+  const root=$('#modalRoot');
+  root.innerHTML=`<div class="scrim" id="shScrim"><div class="panel pad modal" role="dialog" aria-modal="true" aria-labelledby="shT">
+    <div class="row" style="justify-content:space-between"><h2 id="shT">${h.status==='complete'?'Shiny found!':'Share your hunt'}</h2><button class="btn ghost" type="button" id="shClose">Close</button></div>
+    <div id="shImg" class="shimg"><span class="note">Making your image…</span></div>
+    <div class="row actions" style="justify-content:flex-end"><button class="btn" type="button" id="shSave" disabled>Save image</button><button class="btn primary" type="button" id="shGo" disabled>Share</button></div>
+    <p class="note" style="margin:0">Tip: on a phone you can also press and hold the image to save it.</p>
+  </div></div>`;
+  const close=()=>{const i=$('#shImg img');if(i)URL.revokeObjectURL(i.src);root.innerHTML=''};
+  $('#shClose').onclick=close;$('#shScrim').addEventListener('click',e=>{if(e.target.id==='shScrim')close()});
+  let blob;try{blob=await shareCard(h)}catch(e){blob=null}
+  if(!$('#shImg'))return;
+  if(!blob){$('#shImg').innerHTML='<span class="note">Could not create the image on this device.</span>';return}
+  const url=URL.createObjectURL(blob),name=`shiny-${String(h.target||'hunt').toLowerCase().replace(/[^a-z0-9]+/g,'-')}.png`;
+  $('#shImg').innerHTML=`<img src="${url}" alt="Shiny ${esc(h.target)} found after ${num(h.count)} encounters">`;
+  const file=new File([blob],name,{type:'image/png'});
+  const text=`Shiny ${h.target} found after ${num(h.count)} ${METHOD[h.method]&&METHOD[h.method].id==='rng'?'attempts':'encounters'} in ${(GAMES[h.game]||{}).n||'Pokémon'}! Tracked with Shiny Ledger: https://${SHARE_URL}`;
+  const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+  const go=$('#shGo'),sv=$('#shSave');sv.disabled=false;go.disabled=false;
+  if(!canShare)go.textContent='Copy caption';
+  sv.onclick=()=>{const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();toast('Image saved')};
+  go.onclick=async()=>{
+    if(canShare){try{await navigator.share({files:[file],text,title:'Shiny '+h.target})}catch(e){}return}
+    try{await navigator.clipboard.writeText(text);toast('Caption copied')}catch(e){toast(text)}
+  };
+}
+
+/* ============ backup & restore ============ */
+function saveFile(name,text,type){
+  const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+const stamp=()=>new Date().toISOString().slice(0,10);
+function exportJSON(){
+  const hunts=realHunts().map(plain);
+  if(!hunts.length){toast('No hunts to back up yet');return}
+  saveFile(`shiny-ledger-backup-${stamp()}.json`,JSON.stringify({app:'Shiny Ledger',version:1,exported:new Date().toISOString(),hunts},null,1),'application/json');
+  toast(`Backed up ${hunts.length} hunt${hunts.length>1?'s':''}`);
+}
+function exportCSV(){
+  const hunts=realHunts();if(!hunts.length){toast('No hunts to export yet');return}
+  const q=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const d=t=>t?new Date(t).toISOString().slice(0,10):'';
+  const rows=[['Target','Dex #','Game','Method','Encounter type','Encounters','Chain','Odds','Status','Started','Found','Time hunted','Phases','Notes']];
+  for(const h of hunts){const o=huntOdds(h);
+    rows.push([h.target,h.species||'',(GAMES[h.game]||{}).n||h.game,(METHOD[h.method]||{}).n||h.method,h.enc||'',h.count||0,h.chain||0,o.target?'RNG':fmtDen(o.p),h.status,d(h.started),d(h.completed),fmtTime(huntTime(h)),(h.phases||[]).map(x=>x.species+' @'+x.at).join('; '),h.notes||''])}
+  saveFile(`shiny-ledger-hunts-${stamp()}.csv`,'﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),'text/csv');
+  toast('Spreadsheet downloaded');
+}
+async function importJSON(file){
+  let data;try{data=JSON.parse(await file.text())}catch(e){toast("That file isn't a Shiny Ledger backup");return null}
+  const list=Array.isArray(data)?data:(data&&Array.isArray(data.hunts)?data.hunts:null);
+  if(!list){toast("That file isn't a Shiny Ledger backup");return null}
+  let added=0;
+  for(const raw of list){
+    if(!raw||typeof raw!=='object'||!raw.id||!raw.game||!raw.method)continue;
+    const h=plain(raw);delete h.example;h.count=Math.max(0,+h.count||0);h.chain=Math.max(0,+h.chain||0);
+    const cur=S.hunts.get(h.id);
+    if(cur&&!cur.example&&(cur.updated||0)>=(h.updated||0))continue;
+    if(S.examples)clearExamples();
+    S.hunts.set(h.id,h);Store.markSet(h,'count');Store.markSet(h,'chain');Store.save(h,true);added++;
+  }
+  if(added){if(!S.hunts.has(S.sel))S.sel=pickDefault();renderHunts()}
+  return added;
+}
 
 /* ============ credits, feedback, privacy ============ */
 const D3=Object.assign({
@@ -1566,8 +1779,8 @@ function openPrivacy(){
   if(d2){d2.dataset.orig=d2.textContent;arm(d2,async()=>{wipeLocal();close();toast('Hunts on this device were deleted.')},'Tap again to delete')}
 }
 function wipeLocal(){
-  [LS_HUNTS,LS_OUT,LS_TOMB,LS_OWNER].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
-  Store.outbox.clear();Store.tombs.clear();
+  [LS_HUNTS,LS_OUT,LS_TOMB,LS_OWNER,LS_BASE,LS_SETS].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  Store.outbox.clear();Store.tombs.clear();Store.base={};Store.sets={};
   S.hunts=new Map();exampleHunts().forEach(h=>S.hunts.set(h.id,h));S.examples=true;S.sel=pickDefault();
   if(S.focus)closeFocus();renderHunts();
 }

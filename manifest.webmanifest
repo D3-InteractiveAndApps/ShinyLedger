@@ -1,7 +1,7 @@
 {
   "name": "Shiny Ledger",
   "short_name": "Shiny Ledger",
-  "description": "Track shiny hunts for every Pokémon game, with live odds, RNG tools and themes.",
+  "description": "Track shiny hunts in the main-series Pokémon games, from Gold & Silver to Legends: Z-A, with live odds, RNG tools and themes.",
   "start_url": "./",
   "scope": "./",
   "id": "./",

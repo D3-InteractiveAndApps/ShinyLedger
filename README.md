@@ -1,6 +1,6 @@
 # Shiny Ledger
 
-Shiny hunt tracker for every main-series Pokémon game: live odds, chain-aware counters, an RNG lab, 40 themes, and a home screen app that syncs between phone and computer.
+Shiny hunt tracker for the main-series Pokémon games, Gold & Silver to Legends: Z-A: live odds, chain-aware counters, an RNG lab, 40 themes, and a home screen app that syncs between phone and computer.
 
 Static site (GitHub Pages) + Supabase (sign-in and storage). No build step.
 
@@ -11,15 +11,16 @@ Static site (GitHub Pages) + Supabase (sign-in and storage). No build step.
 | `index.html` | The whole app |
 | `config.js` | Your Supabase URL and anon key |
 | `sw.js` | Service worker: offline use and fast loading |
-| `manifest.webmanifest`, `icons/` | Home screen app name and icons |
-| `vendor/supabase.js` | Supabase client, bundled so the app works offline |
-| `supabase/schema.sql` | Database tables and privacy rules |
+| `manifest.webmanifest`, `*.png`, `*.ico`, `*.svg` | Home screen app name and icons |
+| `supabase.js`, `591.supabase.js` | Supabase client, bundled so the app works offline |
+| `sync-merge.sql` | Database function that merges counts from several devices |
+| `schema.sql` | Database tables and privacy rules |
 
 ## Setup
 
 ### 1. Supabase
 1. Create a project at supabase.com.
-2. **SQL Editor → New query**: paste `supabase/schema.sql`, run it.
+2. **SQL Editor → New query**: paste `schema.sql`, run it.
 3. **Authentication → Email Templates → Magic Link**: make sure the body includes the code, for example:
    `Your Shiny Ledger code is {{ .Token }}`
    (The app signs in with a typed code, not a link. Links open in Safari instead of the installed iPhone app, which has separate storage.)
@@ -27,7 +28,7 @@ Static site (GitHub Pages) + Supabase (sign-in and storage). No build step.
 5. **Project Settings → API**: copy the **Project URL** and the **anon public** key into `config.js`.
 
 ### 2. GitHub Pages
-1. Push this folder to a GitHub repository (files at the repo root).
+1. Upload every file to the root of a GitHub repository. There are no subfolders, so GitHub's web uploader works as-is.
 2. **Settings → Pages**: deploy from the `main` branch, `/ (root)`.
 3. Open `https://<user>.github.io/<repo>/`.
 
@@ -37,6 +38,7 @@ Static site (GitHub Pages) + Supabase (sign-in and storage). No build step.
 - Also available from the sync button (top right) → Account & app.
 
 ## How sync works
+- Counts and chains merge by adding each device's changes (run `sync-merge.sql` once in Supabase). Counting on two devices at once, even offline, never loses encounters.
 - Every change is saved on the device first, so counting works with no signal.
 - When signed in and online, changes upload within a second and appear live on your other devices.
 - Hunts made before signing in upload to your account the first time you sign in.
