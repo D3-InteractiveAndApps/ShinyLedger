@@ -1,32 +1,38 @@
-# Shiny Ledger keep-alive.
-# Supabase pauses free projects after about a week with no activity, so this asks the
-# database for one row twice a week. It lives in GitHub at .github/workflows/keepalive.yml
 name: Supabase keep-alive
+
+# Supabase pauses free projects that get too little database activity over a week.
+# Read-only pings twice a week were not enough for ArcWright, so this calls
+# shinyledger_ping() every 4 hours, which writes a timestamp to the database
+# (see heartbeat.sql). A failed run emails you through GitHub.
 on:
   schedule:
-    - cron: "17 9 * * 1,4"   # Mondays and Thursdays, 09:17 UTC
-  workflow_dispatch: {}      # adds a "Run workflow" button for testing
+    - cron: '47 */4 * * *'    # every 4 hours, every day
+  workflow_dispatch:          # adds a "Run workflow" button for testing
 
 permissions:
-  actions: write             # lets the last step keep this schedule switched on
+  actions: write              # lets the last step keep this schedule switched on
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase
+      - name: Write a heartbeat to Supabase
+        env:
+          SUPABASE_URL: https://udglqkfmbfuvgsfmkyey.supabase.co
+          SUPABASE_KEY: sb_publishable_ralD0inWYkxBVIuiQ2Y_Iw_jkjZUXIK
         run: |
-          CFG=$(curl -fsS https://d3-interactiveandapps.github.io/ShinyLedger/config.js)
-          URL=$(echo "$CFG" | grep -o 'supabaseUrl: *"[^"]*"' | sed 's/.*"\(.*\)"/\1/')
-          KEY=$(echo "$CFG" | grep -o 'supabaseAnonKey: *"[^"]*"' | sed 's/.*"\(.*\)"/\1/')
-          test -n "$URL" && test -n "$KEY"
-          code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/profiles?select=user_id&limit=1" -H "apikey: $KEY")
-          echo "Supabase answered $code"
-          test "$code" = "200"
+          code=$(curl -s -o beat.txt -w '%{http_code}' --retry 3 --retry-delay 30 \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/shinyledger_ping" \
+            -H "apikey: $SUPABASE_KEY" -H "Content-Type: application/json" -d '{}')
+          echo "HTTP $code, heartbeat written at: $(cat beat.txt)"
+          if [ "$code" != "200" ]; then
+            echo "::error::Supabase did not accept the heartbeat (HTTP $code). If the project is paused, restore it on the Supabase dashboard. If this says 404, run heartbeat.sql in the SQL Editor."
+            exit 1
+          fi
 
       - name: Keep this schedule switched on
         # GitHub turns off scheduled workflows in repos with no commits for 60 days.
-        # Re-enabling the workflow on every run resets that clock.
+        # Re-enabling the workflow each run resets that clock.
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keepalive.yml/enable"
