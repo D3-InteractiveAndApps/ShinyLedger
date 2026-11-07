@@ -619,7 +619,8 @@ const LS_OUT='shinyledger.outbox', LS_TOMB='shinyledger.tombs', LS_OWNER='shinyl
 const CTR=['count','chain'];
 
 const Store={
-  mode:'local',user:null,channel:null,timer:null,busy:false,again:false,status:'local',noRpc:false,seen:{},
+  mode:'local',user:null,channel:null,timer:null,busy:false,status:'local',noRpc:false,seen:{},
+  lock:Promise.resolve(),flushQ:null,held:[],
   outbox:new Set(lsGet(LS_OUT)||[]),
   tombs:new Set(lsGet(LS_TOMB)||[]),
   base:lsGet(LS_BASE)||{},   // id -> {count,chain} last values confirmed by the server
@@ -654,6 +655,16 @@ const Store={
     lsSet(LS_OWNER,u.id);this.saveOut();
     await this.flush();await this.pull();this.subscribe();this.loadProfile();renderHunts();
   },
+  /* Saves and refreshes run one at a time. While one is talking to the server, realtime
+     updates are held and applied afterwards. Otherwise the server's broadcast of our own
+     save can arrive before the save's reply, get counted as someone else's change, and
+     the tap is counted twice (the Nov 2026 double-count bug). */
+  run(fn){
+    const p=this.lock.then(async()=>{this.busy=true;try{return await fn()}finally{this.busy=false;this.release()}});
+    this.lock=p.catch(()=>{});return p;
+  },
+  release(){const rows=this.held;this.held=[];for(const r of rows)this.onRemote(r)},
+  stamp(id,ts){const t=Date.parse(ts||'')||0;if(t&&(!this.seen[id]||t>this.seen[id]))this.seen[id]=t},
   /* Combine a server copy with this device's copy without losing unsent counts. */
   merge(loc,remote,dirty){
     const id=remote.id,b=this.base[id],st=this.sets[id]||{};
@@ -669,7 +680,8 @@ const Store={
     return out;
   },
   fresh(row){const t=Date.parse(row.updated_at||'')||0;if(t&&this.seen[row.id]&&t<this.seen[row.id])return false;if(t)this.seen[row.id]=t;return true},
-  async pull(){
+  pull(){return this.user?this.run(()=>this._pull()):Promise.resolve()},
+  async _pull(){
     if(!this.user)return;
     if(!navigator.onLine){this.setStatus('offline');return}
     const {data,error}=await sb.from('hunts').select('id,data,deleted,updated_at');
@@ -694,7 +706,9 @@ const Store={
       .subscribe();
   },
   onRemote(row){
-    if(!row||!row.id||!this.fresh(row))return;
+    if(!row||!row.id)return;
+    if(this.busy){this.held.push(row);return}
+    if(!this.fresh(row))return;
     const loc=S.hunts.get(row.id),dirty=this.outbox.has(row.id);
     if(row.deleted){delete this.base[row.id];this.saveOut();if(loc){S.hunts.delete(row.id);if(S.sel===row.id)S.sel=pickDefault();afterRemote()}return}
     if(this.tombs.has(row.id))return;
@@ -718,6 +732,7 @@ const Store={
     if(this.tombs.has(id)){
       const r=await this.rpc({p_id:id,p_data:{},p_deleted:true});
       if(r.error)return false;
+      this.stamp(id,r.data&&r.data.updated_at);
       this.tombs.delete(id);this.outbox.delete(id);delete this.base[id];return true;
     }
     const h=S.hunts.get(id);if(!h||h.example){this.outbox.delete(id);return true}
@@ -732,6 +747,10 @@ const Store={
     const r=await this.rpc(args);
     if(r.error)return false;
     const res=r.data||{};
+    // Remember when the server applied this save, so older broadcasts are ignored.
+    let ts=res.updated_at||r.updated_at;
+    if(!ts){try{const q=await sb.from('hunts').select('updated_at').eq('id',id).maybeSingle();ts=q&&q.data&&q.data.updated_at}catch(e){}}
+    this.stamp(id,ts);
     if(res.deleted){S.hunts.delete(id);this.outbox.delete(id);delete this.base[id];delete this.sets[id];if(S.sel===id)S.sel=pickDefault();return true}
     const srv=res.data||plain(h),cur=S.hunts.get(id);
     this.base[id]={count:srv.count||0,chain:srv.chain||0};
@@ -760,20 +779,24 @@ const Store={
     }
     const row={id:args.p_id,user_id:this.user.id,data:args.p_data,deleted:!!args.p_deleted,updated_at:new Date().toISOString()};
     const {error}=await sb.from('hunts').upsert([row],{onConflict:'id'});
-    return error?{error}:{data:{data:args.p_data,deleted:!!args.p_deleted}};
+    return error?{error}:{data:{data:args.p_data,deleted:!!args.p_deleted,updated_at:row.updated_at}};
   },
-  async flush(){
+  flush(){
+    if(!this.user||!this.outbox.size)return Promise.resolve();
+    if(this.flushQ)return this.flushQ;   // one waiting flush is enough; it sends everything queued by then
+    const p=this.flushQ=this.run(()=>{this.flushQ=null;return this._flush()});
+    return p;
+  },
+  async _flush(){
     if(!this.user||!this.outbox.size)return;
     if(!navigator.onLine){this.setStatus('offline');return}
-    if(this.busy){this.again=true;return}
-    this.busy=true;this.setStatus('saving');
+    this.setStatus('saving');
     let ok=true;
     for(const id of [...this.outbox]){if(!(await this.sendOne(id))){ok=false;break}}
     this.saveOut();persistLocal();
-    this.busy=false;
-    if(!ok){this.again=false;this.setStatus('error');return}
+    if(!ok){this.setStatus('error');return}
     afterRemote();
-    if(this.outbox.size||this.again){this.again=false;setTimeout(()=>this.flush(),300);return}
+    if(this.outbox.size){setTimeout(()=>this.flush(),300);return}
     this.setStatus('synced');
   },
   async loadProfile(){
