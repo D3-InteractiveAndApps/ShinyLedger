@@ -602,7 +602,36 @@ function exampleHunts(){
   ];
 }
 
-function loadLocal(){const a=lsGet(LS_HUNTS);return Array.isArray(a)?a:[]}
+/* Every hunt that comes from outside this code (a backup file, this device's storage, the
+   server) passes through cleanHunt. It keeps only known fields and forces each to a safe
+   type, so a booby-trapped backup can't smuggle code into the page. Returns null if unusable. */
+const H_STATUS=['active','paused','complete','failed'];
+function cleanHunt(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+  const id=String(raw.id||'');if(!/^[A-Za-z0-9_-]{1,64}$/.test(id))return null;
+  const key=v=>{v=String(v==null?'':v);return /^[a-z0-9_]{1,24}$/.test(v)?v:''};
+  const str=(v,n)=>typeof v==='string'?v.slice(0,n):(typeof v==='number'?String(v).slice(0,n):'');
+  const int=(v,lo,hi,d)=>{v=Math.floor(+v);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d};
+  const time=v=>{v=+v;return Number.isFinite(v)&&v>0?v:null};
+  const game=key(raw.game),method=key(raw.method);if(!game||!method)return null;
+  const h={id,game,method,target:str(raw.target,80),enc:str(raw.enc,80),notes:str(raw.notes,5000),
+    count:int(raw.count,0,1e9,0),chain:int(raw.chain,0,1e6,0),step:int(raw.step,1,1000,1),
+    status:H_STATUS.includes(raw.status)?raw.status:'active',linkChain:!!raw.linkChain,
+    oddsOverride:Math.max(0,Math.min(1e7,+raw.oddsOverride||0)),
+    started:time(raw.started),completed:time(raw.completed),runningSince:time(raw.runningSince),
+    timeMs:int(raw.timeMs,0,1e13,0),mods:{},phases:[]};
+  const up=+raw.updated;if(Number.isFinite(up)&&up>0)h.updated=up;
+  const sp=int(raw.species,1,2000,0);if(sp)h.species=sp;
+  if(raw.mods&&typeof raw.mods==='object')for(const [k,v] of Object.entries(raw.mods).slice(0,20)){
+    if(!/^[a-z]{1,16}$/.test(k))continue;
+    if(typeof v==='boolean')h.mods[k]=v;else if(Number.isFinite(+v)&&v!==''&&v!==null)h.mods[k]=Math.max(-1e6,Math.min(1e6,+v));
+  }
+  if(Array.isArray(raw.phases))h.phases=raw.phases.slice(0,1000).filter(x=>x&&typeof x==='object')
+    .map(x=>({at:int(x.at,0,1e9,0),species:str(x.species,60)||'Unknown',date:time(x.date)||0}));
+  if(h.completed==null)delete h.completed;
+  return h;
+}
+function loadLocal(){const a=lsGet(LS_HUNTS);return Array.isArray(a)?a.map(cleanHunt).filter(Boolean):[]}
 function persistLocal(){lsSet(LS_HUNTS,[...S.hunts.values()].filter(h=>!h.example))}
 function realHunts(){return [...S.hunts.values()].filter(h=>!h.example)}
 function plain(h){return JSON.parse(JSON.stringify(h))}
@@ -693,7 +722,8 @@ const Store={
       const loc=local.get(row.id),dirty=this.outbox.has(row.id);
       if(row.deleted){delete this.base[row.id];continue}
       if(this.tombs.has(row.id))continue;
-      next.set(row.id,this.merge(loc,Object.assign({id:row.id},row.data||{}),dirty));
+      const rem=cleanHunt(Object.assign({},row.data||{},{id:row.id}));if(!rem)continue;
+      next.set(row.id,this.merge(loc,rem,dirty));
     }
     for(const [id,h] of local){if(!next.has(id)&&this.outbox.has(id)&&!this.tombs.has(id))next.set(id,h)}
     this.saveOut();setHunts(next);
@@ -713,7 +743,8 @@ const Store={
     if(row.deleted){delete this.base[row.id];this.saveOut();if(loc){S.hunts.delete(row.id);if(S.sel===row.id)S.sel=pickDefault();afterRemote()}return}
     if(this.tombs.has(row.id))return;
     if(S.examples)clearExamples();
-    S.hunts.set(row.id,this.merge(loc,Object.assign({id:row.id},row.data||{}),dirty));this.saveOut();
+    const rem=cleanHunt(Object.assign({},row.data||{},{id:row.id}));if(!rem)return;
+    S.hunts.set(row.id,this.merge(loc,rem,dirty));this.saveOut();
     if(!S.sel)S.sel=row.id;afterRemote();
   },
   save(h,now){
@@ -752,7 +783,7 @@ const Store={
     if(!ts){try{const q=await sb.from('hunts').select('updated_at').eq('id',id).maybeSingle();ts=q&&q.data&&q.data.updated_at}catch(e){}}
     this.stamp(id,ts);
     if(res.deleted){S.hunts.delete(id);this.outbox.delete(id);delete this.base[id];delete this.sets[id];if(S.sel===id)S.sel=pickDefault();return true}
-    const srv=res.data||plain(h),cur=S.hunts.get(id);
+    const srv=cleanHunt(Object.assign({},res.data||plain(h),{id}))||plain(h),cur=S.hunts.get(id);
     this.base[id]={count:srv.count||0,chain:srv.chain||0};
     const cs=this.sets[id]||{};
     for(const f of CTR)if((cs[f]||0)===(st[f]||0))delete cs[f];
@@ -894,8 +925,8 @@ function renderHunts(){
          ${[['active','In progress'],['done','Finished'],['all','All']].map(([k,l])=>`<button data-filter="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('')}
        </div>
        <div class="hlist">${list.length?list.map(h=>{const g=GAMES[h.game];const m=METHOD[h.method];return `
-         <button class="hitem" data-sel="${h.id}" aria-current="${S.sel===h.id}">
-           <span class="dot st-${h.status}"></span>
+         <button class="hitem" data-sel="${esc(h.id)}" aria-current="${S.sel===h.id}">
+           <span class="dot st-${esc(h.status)}"></span>
            <span style="min-width:0"><span class="t">${esc(h.target||'Untitled')}</span><span class="s">${esc(g?g.s:'?')} · ${esc(m?m.n:'?')}</span></span>
            <span class="c">${num(h.count)}</span>
          </button>`}).join(''):`<p class="muted" style="padding:8px 4px;margin:0">No hunts here yet.</p>`}</div>
@@ -952,7 +983,7 @@ function renderDetail(){
   return `
    <div class="dhead">
      <div>
-       <div class="row" style="gap:8px"><span class="pill ${h.status}">${{active:'Hunting',paused:'Paused',complete:'Shiny found',failed:'Failed'}[h.status]||h.status}</span>${(()=>{const lk=shinyLock(h.species,h.game);return lk?`<span class="pill lock-${lk.level}" title="${esc(lk.msg)}">${lk.level==='locked'?'Shiny-locked':lk.level==='gift'?'Gift is locked':'Check lock'}</span>`:''})()}${h.example?'<span class="pill">Example</span>':''}</div>
+       <div class="row" style="gap:8px"><span class="pill ${esc(h.status)}">${{active:'Hunting',paused:'Paused',complete:'Shiny found',failed:'Failed'}[h.status]||esc(h.status)}</span>${(()=>{const lk=shinyLock(h.species,h.game);return lk?`<span class="pill lock-${lk.level}" title="${esc(lk.msg)}">${lk.level==='locked'?'Shiny-locked':lk.level==='gift'?'Gift is locked':'Check lock'}</span>`:''})()}${h.example?'<span class="pill">Example</span>':''}</div>
        <h2 style="margin-top:8px">${esc(h.target||'Untitled')}</h2>
        <div class="meta">${h.species?dexNo(h.species)+' · ':''}${esc(g?g.n:'?')} · ${esc(m?m.n:'?')} · ${esc(h.enc||'')}${h.mods&&h.mods.charm&&g.charm?' · Shiny Charm':''}</div>
      </div>
@@ -1724,7 +1755,7 @@ function exportJSON(){
 }
 function exportCSV(){
   const hunts=realHunts();if(!hunts.length){toast('No hunts to export yet');return}
-  const q=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const q=v=>{v=v==null?'':String(v);if(/^[=+\-@\t\r]/.test(v)&&!/^-?\d/.test(v))v="'"+v;return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const d=t=>t?new Date(t).toISOString().slice(0,10):'';
   const rows=[['Target','Dex #','Game','Method','Encounter type','Encounters','Chain','Odds','Status','Started','Found','Time hunted','Phases','Notes']];
   for(const h of hunts){const o=huntOdds(h);
@@ -1738,8 +1769,7 @@ async function importJSON(file){
   if(!list){toast("That file isn't a Shiny Ledger backup");return null}
   let added=0;
   for(const raw of list){
-    if(!raw||typeof raw!=='object'||!raw.id||!raw.game||!raw.method)continue;
-    const h=plain(raw);delete h.example;h.count=Math.max(0,+h.count||0);h.chain=Math.max(0,+h.chain||0);
+    const h=cleanHunt(raw);if(!h)continue;
     const cur=S.hunts.get(h.id);
     if(cur&&!cur.example&&(cur.updated||0)>=(h.updated||0))continue;
     if(S.examples)clearExamples();
