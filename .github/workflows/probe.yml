@@ -1,0 +1,41 @@
+name: Security probe (temporary)
+on:
+  push:
+    branches: [security-probe]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Act as an anonymous stranger with only the public key
+        env:
+          U: https://udglqkfmbfuvgsfmkyey.supabase.co
+          K: sb_publishable_ralD0inWYkxBVIuiQ2Y_Iw_jkjZUXIK
+        run: |
+          H=(-H "apikey: $K" -H "Authorization: Bearer $K")
+          show(){ echo "### $1"; shift; out=$(curl -s -m 20 -w '\n[HTTP %{http_code}]' "$@"); echo "$out" | head -c 1500; echo; echo; }
+          echo "===== 1. What does the API advertise? (table/function list)"
+          curl -s -m 20 "${H[@]}" "$U/rest/v1/" -o api.json -w '[HTTP %{http_code}]\n'
+          python3 - <<'P' || head -c 600 api.json
+          import json; d=json.load(open('api.json'))
+          print('tables/views:', sorted(k.strip('/') for k in d.get('paths',{}) if not k.startswith('/rpc')))
+          print('functions:', sorted(k[5:] for k in d.get('paths',{}) if k.startswith('/rpc/')))
+          P
+          echo "===== 2. Try to READ every table"
+          for t in hunts profiles shinyledger_heartbeat users; do show "read $t" "${H[@]}" "$U/rest/v1/$t?select=*&limit=3"; done
+          echo "===== 3. Try to WRITE / CHANGE / DELETE"
+          show "insert hunt" "${H[@]}" -H "Content-Type: application/json" -H "Prefer: return=representation" -X POST "$U/rest/v1/hunts" -d '{"id":"probe1","data":{"count":1}}'
+          show "insert profile" "${H[@]}" -H "Content-Type: application/json" -X POST "$U/rest/v1/profiles" -d '{"skin":"x"}'
+          show "update every hunt" "${H[@]}" -H "Content-Type: application/json" -H "Prefer: return=representation" -X PATCH "$U/rest/v1/hunts?id=neq.zzz" -d '{"deleted":true}'
+          show "delete every hunt" "${H[@]}" -H "Prefer: return=representation" -X DELETE "$U/rest/v1/hunts?id=neq.zzz"
+          show "change heartbeat table" "${H[@]}" -H "Content-Type: application/json" -H "Prefer: return=representation" -X PATCH "$U/rest/v1/shinyledger_heartbeat?id=eq.1" -d '{"beats":0}'
+          echo "===== 4. Try every database function"
+          show "sync_hunt" "${H[@]}" -H "Content-Type: application/json" -X POST "$U/rest/v1/rpc/sync_hunt" -d '{"p_id":"probe2","p_data":{"count":9}}'
+          show "delete_my_account" "${H[@]}" -H "Content-Type: application/json" -X POST "$U/rest/v1/rpc/delete_my_account" -d '{}'
+          show "shinyledger_ping (meant to be public)" "${H[@]}" -H "Content-Type: application/json" -X POST "$U/rest/v1/rpc/shinyledger_ping" -d '{}'
+          echo "===== 5. Other doors"
+          show "GraphQL schema" "${H[@]}" -H "Content-Type: application/json" -X POST "$U/graphql/v1" -d '{"query":"{ __schema { queryType { fields { name } } } }"}'
+          show "storage buckets" "${H[@]}" "$U/storage/v1/bucket"
+          show "auth settings (public by design)" "${H[@]}" "$U/auth/v1/settings"
+          show "list users (admin only)" "${H[@]}" "$U/auth/v1/admin/users"
